@@ -1,0 +1,29 @@
+# MFC コントロール操作 → WinForms 相当変換
+
+# コンボボックス・リストボックス: 項目追加
+from: RECEIVER . AddString ( ABSTRACT_PARAM00 )
+to: RECEIVER.Items.Add(ABSTRACT_PARAM00)
+
+# コンボボックス・リストボックス: 全項目クリア
+from: RECEIVER . ResetContent ( )
+to: RECEIVER.Items.Clear()
+
+# コンボボックス・リストボックス: 選択インデックス取得
+from: RECEIVER . GetCurSel ( )
+to: RECEIVER.SelectedIndex
+
+# コンボボックス・リストボックス: 選択インデックス設定
+from: RECEIVER . SetCurSel ( ABSTRACT_PARAM00 )
+to: RECEIVER.SelectedIndex = ABSTRACT_PARAM00
+
+# リストボックス: 選択テキスト取得（第2引数 out 相当を LHS に）
+from: RECEIVER . GetText ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 )
+to: ABSTRACT_PARAM01 = RECEIVER.SelectedItem?.ToString() ?? ""
+
+# フォーカス設定
+from: RECEIVER . SetFocus ( )
+to: RECEIVER.Focus()
+
+# UpdateData → DoDataExchange
+from: UpdateData ( ABSTRACT_PARAM00 )
+to: DoDataExchange(ABSTRACT_PARAM00)

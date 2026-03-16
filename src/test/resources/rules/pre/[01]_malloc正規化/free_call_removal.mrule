@@ -1,0 +1,3 @@
+# free() 呼び出しを削除する（C# の string は GC 管理のため不要）
+find: free ( ABSTRACT_PARAM00 ) ;
+replace:

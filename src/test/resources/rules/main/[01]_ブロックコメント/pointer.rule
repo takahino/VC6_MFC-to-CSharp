@@ -1,0 +1,5 @@
+# C++ ポインタメンバアクセス演算子 → C# メンバアクセス演算子
+from: ->
+to: .
+test: void f ( ) { this -> m_str ; }
+assrt: void f ( ) { this . m_str ; }

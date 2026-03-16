@@ -1,0 +1,8 @@
+# LPSTR 宣言と後続の malloc 代入を対応付け、C# の string へ正規化する
+# 宣言部と代入部は分離する（string var; と var = "";）
+scope: block
+find: LPSTR ABSTRACT_PARAM00 ;
+replace: string ABSTRACT_PARAM00 ;
+skip:
+find: ABSTRACT_PARAM00 = ( char * ) malloc ( ABSTRACT_PARAM01 ) ;
+replace: ABSTRACT_PARAM00 = "" ;

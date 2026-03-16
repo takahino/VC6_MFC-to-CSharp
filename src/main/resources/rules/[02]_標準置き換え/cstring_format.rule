@@ -1,0 +1,28 @@
+# CString::Format / CTime::Format → MigrationHelper.Format 変換ルール
+# CString と CTime の両方が Format メソッドを持つため、MigrationHelper.Format のオーバーロードで型解決する。
+# フォーマット文字列内の %d 等の変換は MigrationHelper 内部ロジックで処理する。
+# RECEIVER を使用することで this.m_str 等のドットチェーンレシーバーにも対応
+
+# CTime::Format — 引数1つ（日付書式のみ）
+from: RECEIVER . Format ( ABSTRACT_PARAM00 )
+to: MigrationHelper.Format(RECEIVER, ABSTRACT_PARAM00)
+test: void f() { CTime t; CString s = t.Format("%Y/%m/%d"); }
+assrt: void f() { CTime t; string s = MigrationHelper.Format(t, "%Y/%m/%d"); }
+
+# CString::Format — 引数2つ（書式 + 1引数）
+from: RECEIVER . Format ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 )
+to: MigrationHelper.Format(RECEIVER, ABSTRACT_PARAM00, ABSTRACT_PARAM01)
+test: void f() { CString s; s.Format(_T("A%03d"), nSel + 1); }
+assrt: void f() { string s; MigrationHelper.Format(s, _T("A%03d"), nSel + 1); }
+
+# CString::Format — 引数3つ（書式 + 2引数）
+from: RECEIVER . Format ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 )
+to: MigrationHelper.Format(RECEIVER, ABSTRACT_PARAM00, ABSTRACT_PARAM01, ABSTRACT_PARAM02)
+
+# CString::Format — 引数4つ（書式 + 3引数）
+from: RECEIVER . Format ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 , ABSTRACT_PARAM03 )
+to: MigrationHelper.Format(RECEIVER, ABSTRACT_PARAM00, ABSTRACT_PARAM01, ABSTRACT_PARAM02, ABSTRACT_PARAM03)
+
+# CString::Format — 引数5つ（書式 + 4引数）
+from: RECEIVER . Format ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 , ABSTRACT_PARAM03 , ABSTRACT_PARAM04 )
+to: MigrationHelper.Format(RECEIVER, ABSTRACT_PARAM00, ABSTRACT_PARAM01, ABSTRACT_PARAM02, ABSTRACT_PARAM03, ABSTRACT_PARAM04)

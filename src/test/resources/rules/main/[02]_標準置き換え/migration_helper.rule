@@ -1,0 +1,16 @@
+# MigrationHelper 系メソッド変換ルール
+# CString::Find, CString::GetAt, CString::IsEmpty 等
+# Format は format_migration.rule を参照
+# RECEIVER を使用することで this.m_str 等のドットチェーンレシーバーにも対応
+
+# CString::Find / CList::Find → MigrationHelper.Find
+from: RECEIVER . Find ( ABSTRACT_PARAM00 )
+to: MigrationHelper.Find(RECEIVER, ABSTRACT_PARAM00)
+
+# CString::GetAt / CArray::GetAt → MigrationHelper.GetAt
+from: RECEIVER . GetAt ( ABSTRACT_PARAM00 )
+to: MigrationHelper.GetAt(RECEIVER, ABSTRACT_PARAM00)
+
+# CString::IsEmpty / CArray::IsEmpty 等 → MigrationHelper.IsEmpty
+from: RECEIVER . IsEmpty ( )
+to: MigrationHelper.IsEmpty(RECEIVER)

@@ -1,0 +1,29 @@
+# CString 直接変換ルール（MigrationHelper を経由しない）
+# TrimRight → TrimEnd, Left → Substring, GetLength → Length
+# RECEIVER を使用することで this.m_str 等のドットチェーンレシーバーにも対応
+
+# CString::GetLength() → string.Length（プロパティ、括弧なし）
+from: RECEIVER . GetLength ( )
+to: RECEIVER.Length
+test: void f( ) { DWORD n = str.GetLength() ; }
+assrt: void f( ) { uint n = str.Length ; }
+test: void f( ) { uint len = text.GetLength() ; }
+assrt: void f( ) { uint len = text.Length ; }
+
+# CString::TrimRight → string.TrimEnd
+from: RECEIVER . TrimRight ( )
+to: RECEIVER.TrimEnd()
+test: void f( ) { str.TrimRight(); }
+assrt: void f( ) { str.TrimEnd(); }
+test: void f( ) { this->m_str.TrimRight(); }
+assrt: void f( ) { this . m_str.TrimEnd(); }
+
+# CString::Left(n) → string.Substring(0, n)
+from: RECEIVER . Left ( ABSTRACT_PARAM00 )
+to: RECEIVER.Substring(0, ABSTRACT_PARAM00)
+test: void f( ) { str.Left(5); }
+assrt: void f( ) { str.Substring(0, 5); }
+test: void f( ) { this->m_str.Left(5); }
+assrt: void f( ) { this . m_str.Substring(0, 5); }
+test: void f( ) { app.m_str.Left(10); }
+assrt: void f( ) { app.m_str.Substring(0, 10); }

@@ -1,0 +1,11 @@
+# HANDLE 宣言・CreateFile 代入・CloseHandle 解放の3段相関を一括正規化する
+# skip: を2つ使い、各文の間に任意のコードが挿入されていてもマッチする
+scope: block
+find: HANDLE ABSTRACT_PARAM00 ;
+replace: FileStream ABSTRACT_PARAM00 ;
+skip:
+find: ABSTRACT_PARAM00 = CreateFile ( ABSTRACT_PARAM01 ) ;
+replace: ABSTRACT_PARAM00 = new FileStream(ABSTRACT_PARAM01) ;
+skip:
+find: CloseHandle ( ABSTRACT_PARAM00 ) ;
+replace: ABSTRACT_PARAM00 . Close ( ) ;

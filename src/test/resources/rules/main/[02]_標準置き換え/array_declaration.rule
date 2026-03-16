@@ -1,0 +1,37 @@
+# C++ 配列宣言 → C# 配列宣言
+# TYPE id [ size ] → TYPE [] id = new TYPE [ size ]
+# 型は既知の型に限定し、式内の arr [ 0 ] 等の添字アクセスと誤マッチしないようにする
+
+# CString 型の配列（type_conversions 適用前）
+from: CString ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: string [ ] ABSTRACT_PARAM01 = new string [ ABSTRACT_PARAM02 ]
+test: void f( ) { CString arr[3] ; }
+assrt: void f( ) { string [ ] arr = new string [ 3 ] ; }
+
+# string 型の配列（type_conversions 適用後）
+from: string ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: string [ ] ABSTRACT_PARAM01 = new string [ ABSTRACT_PARAM02 ]
+test: void f( ) { string arr[10] ; }
+assrt: void f( ) { string [ ] arr = new string [ 10 ] ; }
+
+# int 型の配列
+from: int ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: int [ ] ABSTRACT_PARAM01 = new int [ ABSTRACT_PARAM02 ]
+test: void f( ) { int arr[5] ; }
+assrt: void f( ) { int [ ] arr = new int [ 5 ] ; }
+
+# long 型の配列
+from: long ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: long [ ] ABSTRACT_PARAM01 = new long [ ABSTRACT_PARAM02 ]
+
+# uint 型の配列（DWORD/UINT 変換後）
+from: uint ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: uint [ ] ABSTRACT_PARAM01 = new uint [ ABSTRACT_PARAM02 ]
+
+# double 型の配列
+from: double ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: double [ ] ABSTRACT_PARAM01 = new double [ ABSTRACT_PARAM02 ]
+
+# bool 型の配列（BOOL 変換後）
+from: bool ABSTRACT_PARAM01 [ ABSTRACT_PARAM02 ]
+to: bool [ ] ABSTRACT_PARAM01 = new bool [ ABSTRACT_PARAM02 ]

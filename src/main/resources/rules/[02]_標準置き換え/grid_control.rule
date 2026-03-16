@@ -1,0 +1,21 @@
+# MSFlexGrid → DataGridView 相当変換
+
+# 行数設定
+from: RECEIVER . SetRows ( ABSTRACT_PARAM00 )
+to: RECEIVER.RowCount = ABSTRACT_PARAM00
+
+# 列数設定
+from: RECEIVER . SetCols ( ABSTRACT_PARAM00 )
+to: RECEIVER.ColumnCount = ABSTRACT_PARAM00
+
+# 行数取得
+from: RECEIVER . GetRows ( )
+to: RECEIVER.RowCount
+
+# ヘッダ行（第1引数がリテラル 0）→ Columns[col].HeaderText
+from: RECEIVER . SetTextMatrix ( 0 , ABSTRACT_PARAM00 , ABSTRACT_PARAM01 )
+to: RECEIVER.Columns[ABSTRACT_PARAM00].HeaderText = ABSTRACT_PARAM01
+
+# データ行（第1引数が変数）→ Rows[row].Cells[col].Value
+from: RECEIVER . SetTextMatrix ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 )
+to: RECEIVER.Rows[ABSTRACT_PARAM00].Cells[ABSTRACT_PARAM01].Value = ABSTRACT_PARAM02

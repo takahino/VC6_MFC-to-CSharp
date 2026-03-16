@@ -1,0 +1,5 @@
+# CException catch ブロック → Exception catch ブロック（複数行ボディ対応）
+from: catch ( CException * :[var] ) {:[body]}
+to: catch ( Exception :[var] ) {:[body]}
+test: catch ( CException * e ) { e->Delete(); }
+assrt: catch ( Exception e ) { e->Delete(); }

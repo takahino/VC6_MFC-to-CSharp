@@ -1,0 +1,28 @@
+# MFC/Win32 型名 → C# 型名 変換
+
+from: CString
+to: string
+
+from: BOOL
+to: bool
+
+from: TRUE
+to: true
+
+from: FALSE
+to: false
+
+from: DWORD
+to: uint
+
+from: UINT
+to: uint
+
+from: LONG
+to: long
+
+from: LPCTSTR
+to: string
+
+from: NULL
+to: null

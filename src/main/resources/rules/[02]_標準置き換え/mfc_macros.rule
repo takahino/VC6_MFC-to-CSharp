@@ -1,0 +1,5 @@
+# MFC マクロ展開除去
+
+# _T("文字列") → "文字列"
+from: _T ( ABSTRACT_PARAM00 )
+to: ABSTRACT_PARAM00

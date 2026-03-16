@@ -1,0 +1,35 @@
+# 数学関数変換ルール
+# C++ 標準数学関数 → C# Math クラスへの変換
+
+from: sin ( ABSTRACT_PARAM00 )
+to: Math.Sin(ABSTRACT_PARAM00)
+
+from: cos ( ABSTRACT_PARAM00 )
+to: Math.Cos(ABSTRACT_PARAM00)
+
+from: tan ( ABSTRACT_PARAM00 )
+to: Math.Tan(ABSTRACT_PARAM00)
+
+from: sqrt ( ABSTRACT_PARAM00 )
+to: Math.Sqrt(ABSTRACT_PARAM00)
+
+from: abs ( ABSTRACT_PARAM00 )
+to: Math.Abs(ABSTRACT_PARAM00)
+
+from: pow ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 )
+to: Math.Pow(ABSTRACT_PARAM00, ABSTRACT_PARAM01)
+
+from: fabs ( ABSTRACT_PARAM00 )
+to: Math.Abs(ABSTRACT_PARAM00)
+
+from: log ( ABSTRACT_PARAM00 )
+to: Math.Log(ABSTRACT_PARAM00)
+
+from: log10 ( ABSTRACT_PARAM00 )
+to: Math.Log10(ABSTRACT_PARAM00)
+
+from: floor ( ABSTRACT_PARAM00 )
+to: Math.Floor(ABSTRACT_PARAM00)
+
+from: ceil ( ABSTRACT_PARAM00 )
+to: Math.Ceiling(ABSTRACT_PARAM00)

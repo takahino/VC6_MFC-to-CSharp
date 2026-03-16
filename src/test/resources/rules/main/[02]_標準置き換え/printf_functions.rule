@@ -1,0 +1,20 @@
+# printf 系関数の変換ルール
+# C の printf / sprintf 系 → C# Console / String.Format への変換
+
+from: printf ( ABSTRACT_PARAM00 ) ;
+to: Console.Write(ABSTRACT_PARAM00);
+
+from: printf ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 ) ;
+to: Console.Write(ABSTRACT_PARAM00, ABSTRACT_PARAM01);
+
+from: printf ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 ) ;
+to: Console.Write(ABSTRACT_PARAM00, ABSTRACT_PARAM01, ABSTRACT_PARAM02);
+
+from: fprintf ( stderr , ABSTRACT_PARAM00 ) ;
+to: Console.Error.Write(ABSTRACT_PARAM00);
+
+from: sprintf ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 ) ;
+to: ABSTRACT_PARAM00 = string.Format(ABSTRACT_PARAM01);
+
+from: sprintf ( ABSTRACT_PARAM00 , ABSTRACT_PARAM01 , ABSTRACT_PARAM02 ) ;
+to: ABSTRACT_PARAM00 = string.Format(ABSTRACT_PARAM01, ABSTRACT_PARAM02);

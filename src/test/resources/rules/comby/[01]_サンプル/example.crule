@@ -1,0 +1,6 @@
+# COMBY フェーズ サンプルルール
+# テンプレート型引数の置き換え例
+from: List<:[type]>
+to: IList<:[type]>
+test: List<string> x;
+assrt: IList<string> x;

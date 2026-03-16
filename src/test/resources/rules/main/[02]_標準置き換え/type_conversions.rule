@@ -1,0 +1,56 @@
+# 型変換ルール
+# VC++6 / MFC の型 → C# の型への変換
+
+from: CString
+to: string
+
+from: BOOL
+to: bool
+
+from: TRUE
+to: true
+
+from: FALSE
+to: false
+
+from: DWORD
+to: uint
+
+from: UINT
+to: uint
+
+from: LONG
+to: long
+
+from: LPCTSTR
+to: string
+
+from: LPCSTR
+to: string
+
+from: LPSTR
+to: string
+
+from: INT
+to: int
+
+from: BYTE
+to: byte
+
+from: WORD
+to: ushort
+
+# void ポインタ
+from: LPVOID
+to: object
+
+# NULL → null
+from: NULL
+to: null
+
+# AfxMessageBox 戻り値 (MessageBox.Show YesNo の比較用)
+from: IDYES
+to: DialogResult.Yes
+
+from: IDNO
+to: DialogResult.No

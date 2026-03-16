@@ -1,0 +1,32 @@
+# AfxMessageBox → MessageBox.Show 変換ルール
+# VC++6 MFC の AfxMessageBox を C# の MessageBox.Show に変換する
+
+# MB_OK | MB_ICONERROR パターン
+from: AfxMessageBox ( ABSTRACT_PARAM00 , MB_OK | MB_ICONERROR ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+# this. 付き MB_OK | MB_ICONERROR パターン
+from: this . AfxMessageBox ( ABSTRACT_PARAM00 , MB_OK | MB_ICONERROR ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+# MB_OK | MB_ICONWARNING パターン
+from: AfxMessageBox ( ABSTRACT_PARAM00 , MB_OK | MB_ICONWARNING ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+# MB_OK | MB_ICONINFORMATION パターン
+from: AfxMessageBox ( ABSTRACT_PARAM00 , MB_OK | MB_ICONINFORMATION ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+# MB_YESNO | MB_ICONQUESTION パターン (戻り値あり)
+from: AfxMessageBox ( ABSTRACT_PARAM00 , MB_YESNO | MB_ICONQUESTION )
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+
+# MB_OK のみ
+from: AfxMessageBox ( ABSTRACT_PARAM00 , MB_OK ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00, "", MessageBoxButtons.OK, MessageBoxIcon.None);
+test: void f() { AfxMessageBox("Hello", MB_OK); }
+assrt: void f() { MessageBox.Show("Hello", "", MessageBoxButtons.OK, MessageBoxIcon.None); }
+
+# 引数1つ (MB_OK デフォルト)
+from: AfxMessageBox ( ABSTRACT_PARAM00 ) ;
+to: MessageBox.Show(ABSTRACT_PARAM00);

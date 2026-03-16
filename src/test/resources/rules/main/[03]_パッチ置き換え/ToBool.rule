@@ -1,0 +1,11 @@
+# C++ の int/ポインタ等での条件判定 → C# 互換の .ToBool() 拡張メソッド
+# 目的: C++ で許された int 等での判定を拡張メソッドで吸収する
+
+from: if ( ABSTRACT_PARAM00 )
+to: if ((ABSTRACT_PARAM00 ) . ToBool() )
+
+from: while ( ABSTRACT_PARAM00 )
+to: while ((ABSTRACT_PARAM00 ) . ToBool() )
+
+from: for ( ABSTRACT_PARAM00 ; ABSTRACT_PARAM01 ; ABSTRACT_PARAM02 )
+to: for ( ABSTRACT_PARAM00 ; (ABSTRACT_PARAM01 ) . ToBool() ; ABSTRACT_PARAM02 )
