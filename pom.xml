@@ -78,7 +78,21 @@
             <artifactId>guava</artifactId>
             <version>33.3.1-jre</version>
         </dependency>
+
+        <!-- structural-rewriter (comby Java実装) -->
+        <dependency>
+            <groupId>com.github.takahino</groupId>
+            <artifactId>structural-rewriter</artifactId>
+            <version>v0.1.1</version>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
 
     <profiles>
         <!-- フォーマッタ適用プロファイル: mvn -P spotless-apply spotless:apply -->

@@ -31,13 +31,18 @@
 
 package io.github.takahino.cpp2csharp.comby;
 
+import io.github.takahino.comby.Comby;
+import io.github.takahino.comby.core.model.CapturedValue;
+import io.github.takahino.comby.core.model.Match;
+import io.github.takahino.comby.core.model.MatchEnvironment;
 import io.github.takahino.cpp2csharp.converter.PhaseTransformLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * COMBYルール群をソーステキストに反復適用するトランスフォーマー。
@@ -46,13 +51,17 @@ import java.util.List;
  * 各フェーズ内で全ルールの全マッチを収集し、最も右端（start 位置が最大）の
  * マッチを1件適用する。変換が収束（マッチなし）するまで最大100回繰り返す。
  * </p>
+ *
+ * <p>
+ * structural-rewriter ライブラリの {@code Comby.matches()} API を使用した実装。
+ * </p>
  */
 public class CombyTransformer implements CombyEngine {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CombyTransformer.class);
 	private static final int MAX_ITERATIONS = 100;
-
-	private final CombyMatcher matcher = new CombyMatcher();
+	private static final String LANGUAGE = "generic";
+	private static final Pattern TO_HOLE_PATTERN = Pattern.compile(":\\[([a-zA-Z_][a-zA-Z0-9_]*)\\]");
 
 	/** フェーズ適用ログ（フェーズ実行後に getLogs() で取得） */
 	private final List<PhaseTransformLog> logs = new ArrayList<>();
@@ -106,14 +115,16 @@ public class CombyTransformer implements CombyEngine {
 	public String transformPhase(String text, List<CombyRule> rules, int phaseIndex) {
 		String current = text;
 		for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
-			BitSet commentMask = CombySourceLexer.buildExcludedMask(current);
-			RuleMatch best = findRightmostMatchWithRule(current, rules, commentMask);
+			RuleMatch best = findRightmostMatch(current, rules);
 			if (best == null)
 				break;
-			String matchedText = current.substring(best.match().start(), best.match().end());
-			String expanded = matcher.expand(best.rule().getToTemplate(), best.match().captures());
-			current = current.substring(0, best.match().start()) + expanded + current.substring(best.match().end());
-			LOGGER.debug("COMBY 適用: [{}..{}] → '{}'", best.match().start(), best.match().end(), expanded);
+			Match m = best.match();
+			String matchedText = m.matchedText();
+			String expanded = expandTemplate(best.rule().getToTemplate(), m.environment());
+			current = current.substring(0, m.range().start().offset()) + expanded
+					+ current.substring(m.range().end().offset());
+			LOGGER.debug("COMBY 適用: [{}..{}] → '{}'", m.range().start().offset(), m.range().end().offset(),
+					expanded);
 			logs.add(new PhaseTransformLog("COMBY", phaseIndex, best.rule().getSourceFile(),
 					best.rule().getFromPattern(), best.rule().getToTemplate(), matchedText, expanded));
 		}
@@ -121,16 +132,32 @@ public class CombyTransformer implements CombyEngine {
 	}
 
 	/**
-	 * 全ルール・全マッチの中から最右端マッチとその適用ルールを1走査で返す。
+	 * 全ルール・全マッチの中から最右端マッチとその適用ルールを返す。
+	 *
+	 * <p>
+	 * リテラル開始パターン（ホール以外で始まるパターン）の場合、識別子の途中から
+	 * マッチする候補をスキップする。これにより {@code List<:[t]>} → {@code IList<:[t]>} 変換後に
+	 * {@code IList} 内の {@code List} が再マッチして収束しない問題を防ぐ。
+	 * </p>
 	 *
 	 * @return 最右端 {@link RuleMatch}、マッチなしの場合は {@code null}
 	 */
-	private RuleMatch findRightmostMatchWithRule(String text, List<CombyRule> rules, BitSet commentMask) {
+	private RuleMatch findRightmostMatch(String text, List<CombyRule> rules) {
 		RuleMatch best = null;
 		for (CombyRule rule : rules) {
-			for (CombyMatcher.MatchResult m : matcher.findAll(text, rule, commentMask)) {
-				if (best == null || m.start() > best.match().start()
-						|| (m.start() == best.match().start() && m.end() < best.match().end())) {
+			boolean literalStart = !rule.getFromPattern().startsWith(":[");
+			for (Match m : Comby.matches(text, rule.getFromPattern(), LANGUAGE)) {
+				int start = m.range().start().offset();
+				// リテラル開始パターンで識別子途中マッチならスキップ
+				if (literalStart && start > 0
+						&& isIdentChar(text.charAt(start - 1))
+						&& isIdentChar(text.charAt(start))) {
+					continue;
+				}
+				if (best == null
+						|| start > best.match().range().start().offset()
+						|| (start == best.match().range().start().offset()
+								&& m.range().end().offset() < best.match().range().end().offset())) {
 					best = new RuleMatch(m, rule);
 				}
 			}
@@ -138,6 +165,22 @@ public class CombyTransformer implements CombyEngine {
 		return best;
 	}
 
-	private record RuleMatch(CombyMatcher.MatchResult match, CombyRule rule) {
+	private static boolean isIdentChar(char c) {
+		return Character.isLetterOrDigit(c) || c == '_';
+	}
+
+	private String expandTemplate(String toTemplate, MatchEnvironment env) {
+		Matcher hm = TO_HOLE_PATTERN.matcher(toTemplate);
+		StringBuffer sb = new StringBuffer();
+		while (hm.find()) {
+			String name = hm.group(1);
+			String value = env.get(name).map(CapturedValue::value).orElse(hm.group(0));
+			hm.appendReplacement(sb, Matcher.quoteReplacement(value));
+		}
+		hm.appendTail(sb);
+		return sb.toString();
+	}
+
+	private record RuleMatch(Match match, CombyRule rule) {
 	}
 }
