@@ -1,22 +1,22 @@
 // === LICENSE_START ===
 // BSD 3-Clause License
-// 
+//
 // Copyright (c) 2026, Takahiro Hino
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this
 //    list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its
 //    contributors may be used to endorse or promote products derived from
 //    this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -42,77 +42,72 @@ import static org.assertj.core.api.Assertions.*;
 @DisplayName("ConversionToken テスト")
 class ConversionTokenTest {
 
-    @Test
-    @DisplayName("具体的なトークンを正しく生成できる")
-    void testConcreteToken() {
-        ConversionToken token = ConversionToken.of("AfxMessageBox");
-        assertThat(token.getValue()).isEqualTo("AfxMessageBox");
-        assertThat(token.isAbstractParam()).isFalse();
-        assertThat(token.getParamIndex()).isEqualTo(-1);
-    }
+	@Test
+	@DisplayName("具体的なトークンを正しく生成できる")
+	void testConcreteToken() {
+		ConversionToken token = ConversionToken.of("AfxMessageBox");
+		assertThat(token.getValue()).isEqualTo("AfxMessageBox");
+		assertThat(token.isAbstractParam()).isFalse();
+		assertThat(token.getParamIndex()).isEqualTo(-1);
+	}
 
-    @Test
-    @DisplayName("ABSTRACT_PARAM00 を抽象化トークンとして生成できる")
-    void testAbstractParam00() {
-        ConversionToken token = ConversionToken.of("ABSTRACT_PARAM00");
-        assertThat(token.getValue()).isEqualTo("ABSTRACT_PARAM00");
-        assertThat(token.isAbstractParam()).isTrue();
-        assertThat(token.getParamIndex()).isEqualTo(0);
-    }
+	@Test
+	@DisplayName("ABSTRACT_PARAM00 を抽象化トークンとして生成できる")
+	void testAbstractParam00() {
+		ConversionToken token = ConversionToken.of("ABSTRACT_PARAM00");
+		assertThat(token.getValue()).isEqualTo("ABSTRACT_PARAM00");
+		assertThat(token.isAbstractParam()).isTrue();
+		assertThat(token.getParamIndex()).isEqualTo(0);
+	}
 
-    @Test
-    @DisplayName("ABSTRACT_PARAM99 を抽象化トークンとして生成できる")
-    void testAbstractParam99() {
-        ConversionToken token = ConversionToken.of("ABSTRACT_PARAM99");
-        assertThat(token.isAbstractParam()).isTrue();
-        assertThat(token.getParamIndex()).isEqualTo(99);
-    }
+	@Test
+	@DisplayName("ABSTRACT_PARAM99 を抽象化トークンとして生成できる")
+	void testAbstractParam99() {
+		ConversionToken token = ConversionToken.of("ABSTRACT_PARAM99");
+		assertThat(token.isAbstractParam()).isTrue();
+		assertThat(token.getParamIndex()).isEqualTo(99);
+	}
 
-    @Test
-    @DisplayName("ABSTRACT_PARAM01 を正しくパースできる")
-    void testAbstractParam01() {
-        ConversionToken token = ConversionToken.of("ABSTRACT_PARAM01");
-        assertThat(token.isAbstractParam()).isTrue();
-        assertThat(token.getParamIndex()).isEqualTo(1);
-    }
+	@Test
+	@DisplayName("ABSTRACT_PARAM01 を正しくパースできる")
+	void testAbstractParam01() {
+		ConversionToken token = ConversionToken.of("ABSTRACT_PARAM01");
+		assertThat(token.isAbstractParam()).isTrue();
+		assertThat(token.getParamIndex()).isEqualTo(1);
+	}
 
-    @Test
-    @DisplayName("特殊文字トークンを正しく生成できる")
-    void testSpecialCharTokens() {
-        assertThat(ConversionToken.of(".").getValue()).isEqualTo(".");
-        assertThat(ConversionToken.of("(").getValue()).isEqualTo("(");
-        assertThat(ConversionToken.of(";").getValue()).isEqualTo(";");
-        assertThat(ConversionToken.of("|").getValue()).isEqualTo("|");
-    }
+	@Test
+	@DisplayName("特殊文字トークンを正しく生成できる")
+	void testSpecialCharTokens() {
+		assertThat(ConversionToken.of(".").getValue()).isEqualTo(".");
+		assertThat(ConversionToken.of("(").getValue()).isEqualTo("(");
+		assertThat(ConversionToken.of(";").getValue()).isEqualTo(";");
+		assertThat(ConversionToken.of("|").getValue()).isEqualTo("|");
+	}
 
-    @Test
-    @DisplayName("null 値の場合は例外がスローされる")
-    void testNullThrowsException() {
-        assertThatThrownBy(() -> ConversionToken.of(null))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
+	@Test
+	@DisplayName("null 値の場合は例外がスローされる")
+	void testNullThrowsException() {
+		assertThatThrownBy(() -> ConversionToken.of(null)).isInstanceOf(IllegalArgumentException.class);
+	}
 
-    @Test
-    @DisplayName("空文字列の場合は例外がスローされる")
-    void testEmptyThrowsException() {
-        assertThatThrownBy(() -> ConversionToken.of(""))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
+	@Test
+	@DisplayName("空文字列の場合は例外がスローされる")
+	void testEmptyThrowsException() {
+		assertThatThrownBy(() -> ConversionToken.of("")).isInstanceOf(IllegalArgumentException.class);
+	}
 
-    @Test
-    @DisplayName("equals が同値のトークンで true を返す")
-    void testEquals() {
-        assertThat(ConversionToken.of("this")).isEqualTo(ConversionToken.of("this"));
-        assertThat(ConversionToken.of("ABSTRACT_PARAM00"))
-                .isEqualTo(ConversionToken.of("ABSTRACT_PARAM00"));
-    }
+	@Test
+	@DisplayName("equals が同値のトークンで true を返す")
+	void testEquals() {
+		assertThat(ConversionToken.of("this")).isEqualTo(ConversionToken.of("this"));
+		assertThat(ConversionToken.of("ABSTRACT_PARAM00")).isEqualTo(ConversionToken.of("ABSTRACT_PARAM00"));
+	}
 
-    @Test
-    @DisplayName("toString が適切な文字列を返す")
-    void testToString() {
-        assertThat(ConversionToken.of("ABSTRACT_PARAM05").toString())
-                .contains("ABSTRACT_PARAM[05]");
-        assertThat(ConversionToken.of("AfxMessageBox").toString())
-                .contains("AfxMessageBox");
-    }
+	@Test
+	@DisplayName("toString が適切な文字列を返す")
+	void testToString() {
+		assertThat(ConversionToken.of("ABSTRACT_PARAM05").toString()).contains("ABSTRACT_PARAM[05]");
+		assertThat(ConversionToken.of("AfxMessageBox").toString()).contains("AfxMessageBox");
+	}
 }

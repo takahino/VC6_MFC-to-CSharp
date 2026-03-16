@@ -1,22 +1,22 @@
 // === LICENSE_START ===
 // BSD 3-Clause License
-// 
+//
 // Copyright (c) 2026, Takahiro Hino
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this
 //    list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its
 //    contributors may be used to endorse or promote products derived from
 //    this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -54,6 +54,7 @@ import java.util.stream.Stream;
  * 動的ルール定義ファイル (.drule) を読み込み、{@link DynamicRuleSpec} のリストを生成するクラス。
  *
  * <h2>ファイル形式 (.drule)</h2>
+ *
  * <pre>
  * # コメント行
  * collect: ABSTRACT_PARAM00 ::
@@ -66,144 +67,147 @@ import java.util.stream.Stream;
  * </pre>
  *
  * <ul>
- *   <li>collect: は1ファイルに1つ。ABSTRACT_PARAM00 が収集対象の値を捕捉する。</li>
- *   <li>from:/to: はペアで複数記述可能。COLLECTED プレースホルダが収集値に置換される。</li>
- *   <li>空行・コメント行は無視する。</li>
+ * <li>collect: は1ファイルに1つ。ABSTRACT_PARAM00 が収集対象の値を捕捉する。</li>
+ * <li>from:/to: はペアで複数記述可能。COLLECTED プレースホルダが収集値に置換される。</li>
+ * <li>空行・コメント行は無視する。</li>
  * </ul>
  */
 public class DynamicRuleLoader {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRuleLoader.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRuleLoader.class);
 
-    private static final String COLLECT_PREFIX = "collect:";
-    private static final String FROM_PREFIX = "from:";
-    private static final String TO_PREFIX = "to:";
+	private static final String COLLECT_PREFIX = "collect:";
+	private static final String FROM_PREFIX = "from:";
+	private static final String TO_PREFIX = "to:";
 
-    private static final Pattern PHASE_DIR_PATTERN = RuleLoaderConstants.PHASE_DIR_PATTERN;
+	private static final Pattern PHASE_DIR_PATTERN = RuleLoaderConstants.PHASE_DIR_PATTERN;
 
-    private final ConversionRuleLoader ruleLoader;
+	private final ConversionRuleLoader ruleLoader;
 
-    public DynamicRuleLoader() {
-        this.ruleLoader = new ConversionRuleLoader();
-    }
+	public DynamicRuleLoader() {
+		this.ruleLoader = new ConversionRuleLoader();
+	}
 
-    /**
-     * 指定したディレクトリから .drule ファイルを再帰的に読み込む。
-     * {@code [NN]_*} サブディレクトリがある場合は昇順に処理する。
-     *
-     * @param dynamicDir 動的ルールディレクトリ
-     * @return 読み込んだ DynamicRuleSpec のリスト
-     * @throws IOException 読み込みに失敗した場合
-     */
-    public List<DynamicRuleSpec> loadFrom(Path dynamicDir) throws IOException {
-        List<DynamicRuleSpec> specs = new ArrayList<>();
-        if (!Files.isDirectory(dynamicDir)) {
-            return specs;
-        }
+	/**
+	 * 指定したディレクトリから .drule ファイルを再帰的に読み込む。 {@code [NN]_*} サブディレクトリがある場合は昇順に処理する。
+	 *
+	 * @param dynamicDir
+	 *            動的ルールディレクトリ
+	 * @return 読み込んだ DynamicRuleSpec のリスト
+	 * @throws IOException
+	 *             読み込みに失敗した場合
+	 */
+	public List<DynamicRuleSpec> loadFrom(Path dynamicDir) throws IOException {
+		List<DynamicRuleSpec> specs = new ArrayList<>();
+		if (!Files.isDirectory(dynamicDir)) {
+			return specs;
+		}
 
-        List<Path> phaseDirs = new ArrayList<>();
-        List<Path> flatFiles = new ArrayList<>();
-        try (Stream<Path> entries = Files.list(dynamicDir)) {
-            entries.forEach(p -> {
-                if (Files.isDirectory(p) && PHASE_DIR_PATTERN.matcher(p.getFileName().toString()).matches()) {
-                    phaseDirs.add(p);
-                } else if (p.toString().endsWith(".drule")) {
-                    flatFiles.add(p);
-                }
-            });
-        }
+		List<Path> phaseDirs = new ArrayList<>();
+		List<Path> flatFiles = new ArrayList<>();
+		try (Stream<Path> entries = Files.list(dynamicDir)) {
+			entries.forEach(p -> {
+				if (Files.isDirectory(p) && PHASE_DIR_PATTERN.matcher(p.getFileName().toString()).matches()) {
+					phaseDirs.add(p);
+				} else if (p.toString().endsWith(".drule")) {
+					flatFiles.add(p);
+				}
+			});
+		}
 
-        if (!phaseDirs.isEmpty()) {
-            phaseDirs.sort(Comparator.comparing(p -> {
-                Matcher m = PHASE_DIR_PATTERN.matcher(p.getFileName().toString());
-                return m.matches() ? Integer.parseInt(m.group(1)) : 999;
-            }));
-            for (Path phaseDir : phaseDirs) {
-                try (Stream<Path> files = Files.list(phaseDir)) {
-                    files.filter(p -> p.toString().endsWith(".drule"))
-                            .sorted()
-                            .forEach(p -> loadFromFile(p).ifPresent(specs::add));
-                }
-            }
-        } else {
-            flatFiles.stream().sorted().forEach(p -> loadFromFile(p).ifPresent(specs::add));
-        }
+		if (!phaseDirs.isEmpty()) {
+			phaseDirs.sort(Comparator.comparing(p -> {
+				Matcher m = PHASE_DIR_PATTERN.matcher(p.getFileName().toString());
+				return m.matches() ? Integer.parseInt(m.group(1)) : 999;
+			}));
+			for (Path phaseDir : phaseDirs) {
+				try (Stream<Path> files = Files.list(phaseDir)) {
+					files.filter(p -> p.toString().endsWith(".drule")).sorted()
+							.forEach(p -> loadFromFile(p).ifPresent(specs::add));
+				}
+			}
+		} else {
+			flatFiles.stream().sorted().forEach(p -> loadFromFile(p).ifPresent(specs::add));
+		}
 
-        return specs;
-    }
+		return specs;
+	}
 
-    /**
-     * 指定した .drule ファイルを読み込む。
-     *
-     * @param filePath .drule ファイルのパス
-     * @return 読み込んだ DynamicRuleSpec（ファイルが不正な場合は empty）
-     */
-    private java.util.Optional<DynamicRuleSpec> loadFromFile(Path filePath) {
-        try {
-            String content = Files.readString(filePath, StandardCharsets.UTF_8);
-            return java.util.Optional.ofNullable(parse(content, filePath.getFileName().toString()));
-        } catch (IOException e) {
-            LOGGER.warn("動的ルールファイルの読み込みに失敗: {} - {}", filePath, e.getMessage());
-            return java.util.Optional.empty();
-        }
-    }
+	/**
+	 * 指定した .drule ファイルを読み込む。
+	 *
+	 * @param filePath
+	 *            .drule ファイルのパス
+	 * @return 読み込んだ DynamicRuleSpec（ファイルが不正な場合は empty）
+	 */
+	private java.util.Optional<DynamicRuleSpec> loadFromFile(Path filePath) {
+		try {
+			String content = Files.readString(filePath, StandardCharsets.UTF_8);
+			return java.util.Optional.ofNullable(parse(content, filePath.getFileName().toString()));
+		} catch (IOException e) {
+			LOGGER.warn("動的ルールファイルの読み込みに失敗: {} - {}", filePath, e.getMessage());
+			return java.util.Optional.empty();
+		}
+	}
 
-    /**
-     * テキストコンテンツをパースして DynamicRuleSpec を生成する。
-     *
-     * @param content    ファイル内容
-     * @param sourceName ソース名（デバッグ用）
-     * @return パース結果、またはエラー時 null
-     */
-    DynamicRuleSpec parse(String content, String sourceName) {
-        List<String> lines = Arrays.asList(content.split("\r?\n"));
+	/**
+	 * テキストコンテンツをパースして DynamicRuleSpec を生成する。
+	 *
+	 * @param content
+	 *            ファイル内容
+	 * @param sourceName
+	 *            ソース名（デバッグ用）
+	 * @return パース結果、またはエラー時 null
+	 */
+	DynamicRuleSpec parse(String content, String sourceName) {
+		List<String> lines = Arrays.asList(content.split("\r?\n"));
 
-        List<ConversionToken> collectPattern = null;
-        List<DynamicRuleSpec.FromToTemplate> templates = new ArrayList<>();
-        String currentFrom = null;
+		List<ConversionToken> collectPattern = null;
+		List<DynamicRuleSpec.FromToTemplate> templates = new ArrayList<>();
+		String currentFrom = null;
 
-        int i = 0;
-        while (i < lines.size()) {
-            String line = lines.get(i).trim();
-            i++;
+		int i = 0;
+		while (i < lines.size()) {
+			String line = lines.get(i).trim();
+			i++;
 
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
+			if (line.isEmpty() || line.startsWith("#")) {
+				continue;
+			}
 
-            if (line.startsWith(COLLECT_PREFIX)) {
-                String collectStr = line.substring(COLLECT_PREFIX.length()).trim();
-                try {
-                    collectPattern = ruleLoader.tokenizePattern(collectStr);
-                } catch (IllegalArgumentException e) {
-                    LOGGER.warn("collect: パターンのトークン化に失敗: {} - {}", sourceName, e.getMessage());
-                    return null;
-                }
-            } else if (line.startsWith(FROM_PREFIX)) {
-                currentFrom = line.substring(FROM_PREFIX.length()).trim();
-            } else if (line.startsWith(TO_PREFIX)) {
-                if (currentFrom == null) {
-                    LOGGER.warn("to: に対応する from: がありません: {}", sourceName);
-                    continue;
-                }
-                String toStr = line.substring(TO_PREFIX.length()).trim();
-                templates.add(new DynamicRuleSpec.FromToTemplate(currentFrom, toStr));
-                currentFrom = null;
-            } else {
-                LOGGER.warn("不明な行形式: {} : {}", sourceName, line);
-            }
-        }
+			if (line.startsWith(COLLECT_PREFIX)) {
+				String collectStr = line.substring(COLLECT_PREFIX.length()).trim();
+				try {
+					collectPattern = ruleLoader.tokenizePattern(collectStr);
+				} catch (IllegalArgumentException e) {
+					LOGGER.warn("collect: パターンのトークン化に失敗: {} - {}", sourceName, e.getMessage());
+					return null;
+				}
+			} else if (line.startsWith(FROM_PREFIX)) {
+				currentFrom = line.substring(FROM_PREFIX.length()).trim();
+			} else if (line.startsWith(TO_PREFIX)) {
+				if (currentFrom == null) {
+					LOGGER.warn("to: に対応する from: がありません: {}", sourceName);
+					continue;
+				}
+				String toStr = line.substring(TO_PREFIX.length()).trim();
+				templates.add(new DynamicRuleSpec.FromToTemplate(currentFrom, toStr));
+				currentFrom = null;
+			} else {
+				LOGGER.warn("不明な行形式: {} : {}", sourceName, line);
+			}
+		}
 
-        if (collectPattern == null) {
-            LOGGER.warn("collect: が見つかりません: {}", sourceName);
-            return null;
-        }
-        if (templates.isEmpty()) {
-            LOGGER.warn("from:/to: テンプレートが見つかりません: {}", sourceName);
-            return null;
-        }
+		if (collectPattern == null) {
+			LOGGER.warn("collect: が見つかりません: {}", sourceName);
+			return null;
+		}
+		if (templates.isEmpty()) {
+			LOGGER.warn("from:/to: テンプレートが見つかりません: {}", sourceName);
+			return null;
+		}
 
-        LOGGER.debug("動的ルール読み込み完了: {} ({} テンプレート)", sourceName, templates.size());
-        return new DynamicRuleSpec(sourceName, collectPattern, templates);
-    }
+		LOGGER.debug("動的ルール読み込み完了: {} ({} テンプレート)", sourceName, templates.size());
+		return new DynamicRuleSpec(sourceName, collectPattern, templates);
+	}
 }

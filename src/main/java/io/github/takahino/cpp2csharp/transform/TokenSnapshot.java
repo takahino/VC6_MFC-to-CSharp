@@ -1,22 +1,22 @@
 // === LICENSE_START ===
 // BSD 3-Clause License
-// 
+//
 // Copyright (c) 2026, Takahiro Hino
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this
 //    list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its
 //    contributors may be used to endorse or promote products derived from
 //    this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -34,11 +34,14 @@ package io.github.takahino.cpp2csharp.transform;
 /**
  * 変換過程可視化用のトークンスナップショット。
  *
- * <p>一時ファイルへの書き出し・読み込み時に使用する。
- * id と text のペアを保持する。</p>
+ * <p>
+ * 一時ファイルへの書き出し・読み込み時に使用する。 id と text のペアを保持する。
+ * </p>
  *
- * @param id   ノードの一意識別子（AstNode.getId()）
- * @param text トークンテキスト（AstNode.getText()）
+ * @param id
+ *            ノードの一意識別子（AstNode.getId()）
+ * @param text
+ *            トークンテキスト（AstNode.getText()）
  */
 public record TokenSnapshot(int id, String text) {
 }
