@@ -1,0 +1,14 @@
+# MFC コンストラクタ定義から ClassName:: プレフィックスを除去する
+# 同じ名前のホール :[cls] を 2 回使うことで「クラス名と同名のコンストラクタ」のみにマッチ
+# 例: CInventoryDlg::CInventoryDlg(CWnd* pParent) → CInventoryDlg(CWnd* pParent)
+from: :[cls]:::[cls](:[args])
+to: public :[cls](:[args])
+test: CInventoryDlg::CInventoryDlg(CWnd* pParent /*=NULL*/)
+assrt: CInventoryDlg(CWnd* pParent /*=NULL*/)
+
+# MFC デストラクタ定義から ClassName:: プレフィックスを除去する
+# 例: CInventoryDlg::~CInventoryDlg() → ~CInventoryDlg()
+from: :[cls]::~:[cls](:[args])
+to: ~:[cls](:[args])
+test: CInventoryDlg::~CInventoryDlg()
+assrt: ~CInventoryDlg()
