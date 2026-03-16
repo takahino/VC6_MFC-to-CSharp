@@ -123,8 +123,7 @@ public class CombyTransformer implements CombyEngine {
 			String expanded = expandTemplate(best.rule().getToTemplate(), m.environment());
 			current = current.substring(0, m.range().start().offset()) + expanded
 					+ current.substring(m.range().end().offset());
-			LOGGER.debug("COMBY 適用: [{}..{}] → '{}'", m.range().start().offset(), m.range().end().offset(),
-					expanded);
+			LOGGER.debug("COMBY 適用: [{}..{}] → '{}'", m.range().start().offset(), m.range().end().offset(), expanded);
 			logs.add(new PhaseTransformLog("COMBY", phaseIndex, best.rule().getSourceFile(),
 					best.rule().getFromPattern(), best.rule().getToTemplate(), matchedText, expanded));
 		}
@@ -135,9 +134,8 @@ public class CombyTransformer implements CombyEngine {
 	 * 全ルール・全マッチの中から最右端マッチとその適用ルールを返す。
 	 *
 	 * <p>
-	 * リテラル開始パターン（ホール以外で始まるパターン）の場合、識別子の途中から
-	 * マッチする候補をスキップする。これにより {@code List<:[t]>} → {@code IList<:[t]>} 変換後に
-	 * {@code IList} 内の {@code List} が再マッチして収束しない問題を防ぐ。
+	 * リテラル開始パターン（ホール以外で始まるパターン）の場合、識別子の途中から マッチする候補をスキップする。これにより {@code List<:[t]>}
+	 * → {@code IList<:[t]>} 変換後に {@code IList} 内の {@code List} が再マッチして収束しない問題を防ぐ。
 	 * </p>
 	 *
 	 * @return 最右端 {@link RuleMatch}、マッチなしの場合は {@code null}
@@ -149,13 +147,11 @@ public class CombyTransformer implements CombyEngine {
 			for (Match m : Comby.matches(text, rule.getFromPattern(), LANGUAGE)) {
 				int start = m.range().start().offset();
 				// リテラル開始パターンで識別子途中マッチならスキップ
-				if (literalStart && start > 0
-						&& isIdentChar(text.charAt(start - 1))
+				if (literalStart && start > 0 && isIdentChar(text.charAt(start - 1))
 						&& isIdentChar(text.charAt(start))) {
 					continue;
 				}
-				if (best == null
-						|| start > best.match().range().start().offset()
+				if (best == null || start > best.match().range().start().offset()
 						|| (start == best.match().range().start().offset()
 								&& m.range().end().offset() < best.match().range().end().offset())) {
 					best = new RuleMatch(m, rule);
