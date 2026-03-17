@@ -92,22 +92,36 @@ public class ConversionOutputWriter {
 	private static final Pattern STEP_PATTERN = Pattern.compile("^---STEP (\\d+)---$");
 
 	private final ExcelOutputConfig excelConfig;
+	private final String outputExtension;
 
 	/**
-	 * コンストラクタ。デフォルト設定（Excel 有効）で初期化する。
+	 * コンストラクタ。デフォルト設定（Excel 有効、出力拡張子 .cs）で初期化する。
 	 */
 	public ConversionOutputWriter() {
-		this(ExcelOutputConfig.defaultConfig());
+		this(ExcelOutputConfig.defaultConfig(), ".cs");
 	}
 
 	/**
-	 * コンストラクタ。Excel 出力設定を指定可能。
+	 * コンストラクタ。Excel 出力設定を指定可能。出力拡張子はデフォルト .cs。
 	 *
 	 * @param excelConfig
 	 *            Excel 出力の設定
 	 */
 	public ConversionOutputWriter(ExcelOutputConfig excelConfig) {
+		this(excelConfig, ".cs");
+	}
+
+	/**
+	 * コンストラクタ。Excel 出力設定と出力拡張子を指定可能。
+	 *
+	 * @param excelConfig
+	 *            Excel 出力の設定
+	 * @param outputExtension
+	 *            出力ファイルの拡張子（例: ".cs"）
+	 */
+	public ConversionOutputWriter(ExcelOutputConfig excelConfig, String outputExtension) {
 		this.excelConfig = excelConfig != null ? excelConfig : ExcelOutputConfig.defaultConfig();
+		this.outputExtension = outputExtension != null ? outputExtension : ".cs";
 	}
 
 	/**
@@ -158,7 +172,8 @@ public class ConversionOutputWriter {
 		Files.writeString(outputPath, result.getCsCode(), StandardCharsets.UTF_8);
 
 		// 変換レポートを保存（入力と同じディレクトリ）
-		String basename = outputPath.getFileName().toString().replaceFirst("\\.cs$", "");
+		String basename = outputPath.getFileName().toString()
+				.replaceFirst(Pattern.quote(outputExtension) + "$", "");
 		Path reportPath = outputPath.getParent().resolve(basename + ".report.txt");
 		Files.writeString(reportPath, buildReport(basename, cppSource, result, allRules), StandardCharsets.UTF_8);
 
@@ -188,8 +203,8 @@ public class ConversionOutputWriter {
 						StandardCharsets.UTF_8);
 			}
 			for (int i = 0; i < unitOutputDumps.size(); i++) {
-				Files.writeString(unitsDir.resolve(basename + "_" + (i + 1) + ".cs.txt"), unitOutputDumps.get(i),
-						StandardCharsets.UTF_8);
+				Files.writeString(unitsDir.resolve(basename + "_" + (i + 1) + outputExtension + ".txt"),
+						unitOutputDumps.get(i), StandardCharsets.UTF_8);
 			}
 		}
 

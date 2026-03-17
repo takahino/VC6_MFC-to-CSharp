@@ -7,11 +7,11 @@
     <parent>
         <groupId>io.github.takahino</groupId>
         <artifactId>cpp-to-csharp-parent</artifactId>
-        <version>2.0-SNAPSHOT</version>
+        <version>2.1.0</version>
     </parent>
 
     <artifactId>cpp2csharp</artifactId>
-    <version>2.0-SNAPSHOT</version>
+    <version>2.1.0</version>
     <packaging>jar</packaging>
 
     <name>C++ to C# Converter</name>
@@ -20,20 +20,12 @@
     <dependencies>
         <dependency>
             <groupId>io.github.takahino</groupId>
-            <artifactId>token-rule-engine</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <artifactId>pipeline-core</artifactId>
+            <version>2.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.java-diff-utils</groupId>
-            <artifactId>java-diff-utils</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
