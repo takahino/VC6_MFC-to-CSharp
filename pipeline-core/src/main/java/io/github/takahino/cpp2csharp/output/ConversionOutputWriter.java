@@ -172,8 +172,7 @@ public class ConversionOutputWriter {
 		Files.writeString(outputPath, result.getCsCode(), StandardCharsets.UTF_8);
 
 		// 変換レポートを保存（入力と同じディレクトリ）
-		String basename = outputPath.getFileName().toString()
-				.replaceFirst(Pattern.quote(outputExtension) + "$", "");
+		String basename = outputPath.getFileName().toString().replaceFirst(Pattern.quote(outputExtension) + "$", "");
 		Path reportPath = outputPath.getParent().resolve(basename + ".report.txt");
 		Files.writeString(reportPath, buildReport(basename, cppSource, result, allRules), StandardCharsets.UTF_8);
 
