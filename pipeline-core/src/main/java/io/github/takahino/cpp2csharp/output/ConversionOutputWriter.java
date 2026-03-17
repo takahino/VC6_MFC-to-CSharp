@@ -93,6 +93,7 @@ public class ConversionOutputWriter {
 
 	private final ExcelOutputConfig excelConfig;
 	private final String outputExtension;
+	private final Pattern basenamePattern;
 
 	/**
 	 * コンストラクタ。デフォルト設定（Excel 有効、出力拡張子 .cs）で初期化する。
@@ -122,6 +123,7 @@ public class ConversionOutputWriter {
 	public ConversionOutputWriter(ExcelOutputConfig excelConfig, String outputExtension) {
 		this.excelConfig = excelConfig != null ? excelConfig : ExcelOutputConfig.defaultConfig();
 		this.outputExtension = outputExtension != null ? outputExtension : ".cs";
+		this.basenamePattern = Pattern.compile(Pattern.quote(this.outputExtension) + "$");
 	}
 
 	/**
@@ -172,7 +174,7 @@ public class ConversionOutputWriter {
 		Files.writeString(outputPath, result.getCsCode(), StandardCharsets.UTF_8);
 
 		// 変換レポートを保存（入力と同じディレクトリ）
-		String basename = outputPath.getFileName().toString().replaceFirst(Pattern.quote(outputExtension) + "$", "");
+		String basename = basenamePattern.matcher(outputPath.getFileName().toString()).replaceFirst("");
 		Path reportPath = outputPath.getParent().resolve(basename + ".report.txt");
 		Files.writeString(reportPath, buildReport(basename, cppSource, result, allRules), StandardCharsets.UTF_8);
 
@@ -700,7 +702,7 @@ public class ConversionOutputWriter {
 				.collect(Collectors.groupingBy(DiagnosticCandidate::lineNumber));
 
 		String lineEnding = csCode.contains("\r\n") ? "\r\n" : "\n";
-		List<String> lines = csCode.lines().collect(Collectors.toList());
+		List<String> lines = csCode.lines().toList();
 		List<String> out = new ArrayList<>();
 		for (int i = 0; i < lines.size(); i++) {
 			String line = lines.get(i);
@@ -728,16 +730,6 @@ public class ConversionOutputWriter {
 		return s.replace("\n", " ").replace("\r", "");
 	}
 
-	/**
-	 * フェーズ変換ジャーニー HTML を書き出す。
-	 *
-	 * @param path
-	 *            出力先パス
-	 * @param result
-	 *            変換結果
-	 * @throws IOException
-	 *             ファイル書き込みに失敗した場合
-	 */
 	/**
 	 * フェーズ変換ジャーニー HTML を生成する。
 	 *
