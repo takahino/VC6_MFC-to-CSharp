@@ -20,13 +20,23 @@ ANTLR4 による C++ パースと、変換定義ファイル (`.rule`) を用い
 | Java | 21 以上 |
 | Maven | 3.8 以上 |
 
+## プロジェクト構成
+
+Mavenマルチモジュール構成:
+
+```
+vc6-mfc-to-csharp/          ← 親 POM
+├── token-rule-engine/       ← トークン書換エンジン（コアライブラリ）
+└── cpp2csharp/              ← 変換メインアプリ（shaded JAR 生成）
+```
+
 ## ビルド
 
 ```bash
 mvn package -DskipTests
 ```
 
-`target/cpp-to-csharp-1.0-SNAPSHOT-shaded.jar` が生成される。
+`cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar` が生成される。
 
 テストを含めてビルドする場合:
 
@@ -34,31 +44,31 @@ mvn package -DskipTests
 mvn package
 ```
 
-333 テスト全パスを確認してからリリースすること。
+316 テスト全パスを確認してからリリースすること。
 
 ## 使い方
 
 ### 単一ファイル変換
 
 ```bash
-java -jar target/cpp-to-csharp-1.0-SNAPSHOT-shaded.jar <入力C++ファイル> [ルールディレクトリ]
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar <入力C++ファイル> [ルールディレクトリ]
 ```
 
 ```bash
 # 例: クラスパス内蔵ルールを使用
-java -jar cpp-to-csharp.jar MyDialog.cpp
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar MyDialog.cpp
 
 # 例: 外部ルールディレクトリを指定
-java -jar cpp-to-csharp.jar MyDialog.cpp path/to/rules/
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar MyDialog.cpp path/to/rules/
 
 # Excel 出力を無効化（.xlsx を生成しない）
-java -jar cpp-to-csharp.jar --no-excel MyDialog.cpp
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar --no-excel MyDialog.cpp
 ```
 
 ### ディレクトリバッチ変換
 
 ```bash
-java -jar cpp-to-csharp.jar src/dialogs/ path/to/rules/
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar src/dialogs/ path/to/rules/
 ```
 
 ディレクトリ内の `.cpp` / `.c` / `.h` / `.i` を並列変換し、`batch_conversion_summary.txt` を出力する。
@@ -66,7 +76,7 @@ java -jar cpp-to-csharp.jar src/dialogs/ path/to/rules/
 ### パターン発見モード
 
 ```bash
-java -jar cpp-to-csharp.jar --discover src/dialogs/ path/to/rules/
+java -jar cpp2csharp/target/cpp2csharp-2.0-SNAPSHOT-shaded.jar --discover src/dialogs/ path/to/rules/
 ```
 
 既存ルールで変換されないパターンを統計的に収集してレポートを出力する。
