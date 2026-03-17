@@ -39,13 +39,12 @@ import java.util.List;
  * COMBYエンジンの差し替えポイントインターフェイス。
  *
  * <p>
- * 現行実装: {@link CombyTransformer}（インプロセス独自実装）。 将来実装:
- * {@link CliCombyEngine}（comby CLI サブプロセス呼び出し）。
+ * 現行実装: {@link CombyTransformer}（インプロセス独自実装）。
  * </p>
  *
  * <p>
  * {@link io.github.takahino.cpp2csharp.converter.CppToCSharpConverter} は
- * このインターフェイスを通じてエンジンを使用するため、comby CLI への切り替えは コンストラクタ引数を変えるだけで実現できる。
+ * このインターフェイスを通じてエンジンを使用するため、実装の切り替えは コンストラクタ引数を変えるだけで実現できる。
  * </p>
  */
 public interface CombyEngine {

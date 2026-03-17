@@ -140,12 +140,7 @@ public class CppToCSharpConverter {
 	}
 
 	/**
-	 * コンストラクタ（差し替え用）。CombyEngine を外部から注入する。 将来 comby CLI へ切り替える場合はこのコンストラクタを使用する。
-	 *
-	 * <pre>{@code
-	 * // 将来の使用例:
-	 * var converter = new CppToCSharpConverter(new CliCombyEngine(Path.of("/usr/local/bin/comby")));
-	 * }</pre>
+	 * コンストラクタ（差し替え用）。CombyEngine を外部から注入する。
 	 *
 	 * @param combyEngine
 	 *            使用する CombyEngine 実装
