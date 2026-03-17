@@ -9,7 +9,7 @@ param(
 )
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$RulesDir = Join-Path $ProjectRoot "src\main\resources\rules"
+$RulesDir = Join-Path $ProjectRoot "cpp2csharp\src\main\resources\rules"
 $InputDir = $PSScriptRoot
 
 Push-Location $ProjectRoot
@@ -29,7 +29,8 @@ if ($NoExcel -or $InputFile -eq "") {
     $ExtraArgs += " --no-excel"
 }
 
-& mvn -q exec:java `
+& mvn -q install -DskipTests
+& mvn -q exec:java -pl cpp2csharp `
     "-Dexec.mainClass=io.github.takahino.cpp2csharp.Main" `
     "-Dexec.args=$ExtraArgs $Target $RulesDir"
 
