@@ -14,6 +14,7 @@
 
     <modules>
         <module>token-rule-engine</module>
+        <module>pipeline-core</module>
         <module>cpp2csharp</module>
     </modules>
 
