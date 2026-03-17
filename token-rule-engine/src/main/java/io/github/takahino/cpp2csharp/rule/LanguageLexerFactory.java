@@ -38,8 +38,8 @@ import org.antlr.v4.runtime.Lexer;
  * 言語固有の ANTLR Lexer を生成するファクトリインターフェース。
  *
  * <p>
- * engine モジュールは CPP14 文法に依存しないため、Lexer 生成を
- * このインターフェース経由で cpp2csharp モジュールから注入する。
+ * engine モジュールは CPP14 文法に依存しないため、Lexer 生成を このインターフェース経由で cpp2csharp
+ * モジュールから注入する。
  * </p>
  */
 public interface LanguageLexerFactory {

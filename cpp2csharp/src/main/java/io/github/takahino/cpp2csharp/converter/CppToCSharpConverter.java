@@ -118,8 +118,8 @@ public class CppToCSharpConverter {
 		this.lexerFactory = CppParserFactory.asLexerFactory();
 		this.receiverValidator = ReceiverAstValidator.asValidator();
 		this.ruleLoader = new ConversionRuleLoader(lexerFactory);
-		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST,
-				new RightmostFirstSelectionStrategy(), receiverValidator);
+		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST, new RightmostFirstSelectionStrategy(),
+				receiverValidator);
 		this.excelEnabled = excelEnabled;
 		this.combyEngine = new CombyTransformer();
 	}
@@ -154,8 +154,8 @@ public class CppToCSharpConverter {
 		this.lexerFactory = CppParserFactory.asLexerFactory();
 		this.receiverValidator = ReceiverAstValidator.asValidator();
 		this.ruleLoader = new ConversionRuleLoader(lexerFactory);
-		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST,
-				new RightmostFirstSelectionStrategy(), receiverValidator);
+		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST, new RightmostFirstSelectionStrategy(),
+				receiverValidator);
 		this.excelEnabled = ExcelOutputConfig.defaultConfig().isEnabled();
 		this.combyEngine = Objects.requireNonNull(combyEngine, "combyEngine が null です");
 	}

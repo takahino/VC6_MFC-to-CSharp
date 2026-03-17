@@ -37,9 +37,8 @@ import java.util.List;
  * RECEIVER キャプチャの妥当性を検証するインターフェース。
  *
  * <p>
- * engine モジュールは CPP14 文法に依存しないため、AST ベースの妥当性検証は
- * このインターフェース経由で cpp2csharp モジュールから注入する。
- * null の場合はプリフィルタのみを使用する（診断モード相当）。
+ * engine モジュールは CPP14 文法に依存しないため、AST ベースの妥当性検証は このインターフェース経由で cpp2csharp
+ * モジュールから注入する。 null の場合はプリフィルタのみを使用する（診断モード相当）。
  * </p>
  */
 public interface ReceiverValidator {

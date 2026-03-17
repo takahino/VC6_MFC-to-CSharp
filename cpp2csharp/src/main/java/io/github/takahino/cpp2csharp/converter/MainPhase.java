@@ -114,7 +114,8 @@ public class MainPhase implements ConversionPhase {
 	 *            RECEIVER キャプチャの妥当性検証器（null の場合はプリフィルタのみ使用）
 	 */
 	public MainPhase(List<List<ConversionRule>> mainPhases, List<DynamicRuleSpec> dynamicSpecs, Transformer transformer,
-			ConversionRuleLoader ruleLoader, List<int[]> functionDefinitionRanges, ReceiverValidator receiverValidator) {
+			ConversionRuleLoader ruleLoader, List<int[]> functionDefinitionRanges,
+			ReceiverValidator receiverValidator) {
 		this.mainPhases = mainPhases;
 		this.dynamicSpecs = dynamicSpecs;
 		this.transformer = transformer;

@@ -91,8 +91,7 @@ public class ConversionRuleLoader {
 	private final LanguageLexerFactory lexerFactory;
 
 	/**
-	 * デフォルトコンストラクタ。lexerFactory が null の場合、tokenize() で例外がスローされる。
-	 * テストや後方互換のために残す。
+	 * デフォルトコンストラクタ。lexerFactory が null の場合、tokenize() で例外がスローされる。 テストや後方互換のために残す。
 	 */
 	public ConversionRuleLoader() {
 		this(null);
@@ -494,7 +493,8 @@ public class ConversionRuleLoader {
 		}
 
 		if (lexerFactory == null) {
-			throw new IllegalStateException("LanguageLexerFactory が設定されていません。ConversionRuleLoader(LanguageLexerFactory) コンストラクタを使用してください。");
+			throw new IllegalStateException(
+					"LanguageLexerFactory が設定されていません。ConversionRuleLoader(LanguageLexerFactory) コンストラクタを使用してください。");
 		}
 		Lexer lexer = lexerFactory.createLexer(CharStreams.fromString(fromPattern));
 		CollectingErrorListener errorListener = new CollectingErrorListener();

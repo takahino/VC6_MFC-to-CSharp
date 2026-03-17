@@ -140,7 +140,8 @@ public class Retokenizer {
 
 	private RetokenizeResult lex(String source) {
 		if (lexerFactory == null) {
-			throw new IllegalStateException("LanguageLexerFactory が設定されていません。Retokenizer(LanguageLexerFactory) コンストラクタを使用してください。");
+			throw new IllegalStateException(
+					"LanguageLexerFactory が設定されていません。Retokenizer(LanguageLexerFactory) コンストラクタを使用してください。");
 		}
 		Lexer lexer = lexerFactory.createLexer(CharStreams.fromString(source));
 		CollectingErrorListener errorListener = new CollectingErrorListener();
