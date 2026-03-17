@@ -8,7 +8,7 @@ param(
     [switch]$NoExcel
 )
 
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
+$ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $RulesDir = Join-Path $ProjectRoot "cpp2csharp\src\main\resources\rules"
 $InputDir = $PSScriptRoot
 
