@@ -454,7 +454,7 @@ public class CppToCSharpConverter {
 
 		// MAIN フェーズ（動的ルール込み）
 		pipeline.add(new MainPhase(ruleSet.mainPhases(), ruleSet.dynamicSpecs(), transformer, ruleLoader,
-				functionRanges, receiverValidator));
+				functionRanges, receiverValidator, lexerFactory));
 
 		// POST フェーズ（最初の 1 件のみ prependRetokenize=true: MAIN→POST 境界の再トークン化）
 		boolean firstPost = true;
