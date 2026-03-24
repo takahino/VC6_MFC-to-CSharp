@@ -46,6 +46,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -76,6 +77,17 @@ public final class ReceiverAstValidator {
 	 * 上限 500 エントリ（LRU 方式）で十分。構造パターンの種類は文字列種類より遥かに少ない。
 	 */
 	private static final Cache<String, Boolean> VALIDITY_CACHE = CacheBuilder.newBuilder().maximumSize(500).build();
+
+	/**
+	 * テキストレベルのプレキャッシュ。キー: 式文字列（例: "this . m_listCtrl"）。
+	 *
+	 * <p>
+	 * 型キャッシュ（{@link #VALIDITY_CACHE}）がヒットしても Lexer 自体のコストが残る問題を解決する。
+	 * 同一式文字列に対するヒットでは lex を完全にスキップできる。 MFC コードでは {@code this -> m_listCtrl}
+	 * のような受信者が数百回繰り返されるためヒット率が高い。 結果は決定的なため {@link ConcurrentHashMap} で安全に共有できる。
+	 * </p>
+	 */
+	private static final ConcurrentHashMap<String, Boolean> TEXT_CACHE = new ConcurrentHashMap<>();
 
 	private ReceiverAstValidator() {
 		throw new AssertionError("utility class");
@@ -127,16 +139,25 @@ public final class ReceiverAstValidator {
 		if (captured.isEmpty())
 			return false;
 
+		String expr = String.join(" ", captured);
+
+		// テキストプレキャッシュ: 同一式文字列なら Lexer 実行をスキップする。
+		// MFC コードでは同じレシーバー式が多数回繰り返されるためヒット率が高い。
+		Boolean textCached = TEXT_CACHE.get(expr);
+		if (textCached != null)
+			return textCached;
+
 		// Lexer を一度だけ実行してトークン型列を取得する。
 		// キャッシュキーをトークン型列にすることで、"this . m_str" と "this . m_str2" など
 		// 識別子名だけが異なる構造的に等価なパターンが同一エントリにマップされ、
 		// ヒット率が大幅に向上する。
-		String expr = String.join(" ", captured);
 		CommonTokenStream tokenStream = CppParserFactory.lex(expr);
 		String typeKey = buildTypeKey(tokenStream);
 
 		try {
-			return VALIDITY_CACHE.get(typeKey, () -> parseAndValidate(tokenStream, expr));
+			boolean result = VALIDITY_CACHE.get(typeKey, () -> parseAndValidate(tokenStream, expr));
+			TEXT_CACHE.putIfAbsent(expr, result);
+			return result;
 		} catch (ExecutionException e) {
 			return false;
 		}
