@@ -68,7 +68,6 @@ import static org.assertj.core.api.Assertions.*;
  * <li>{@code outputs/test/<name>.report.txt} — 変換サマリーレポート</li>
  * <li>{@code outputs/test/<name>.report.html} — diff HTML レポート</li>
  * <li>{@code outputs/test/<name>.treedump.txt} — AST 木ダンプ（ルール設計デバッグ用）</li>
- * <li>{@code outputs/test/<name>.xlsx} — 変換過程の可視化（Excel）</li>
  * </ul>
  */
 @DisplayName("変換結果ファイル出力テスト")
@@ -739,7 +738,6 @@ class ConversionOutputTest {
 		assertThat(OUTPUT_DIR.resolve(basename + ".report.txt")).exists();
 		assertThat(OUTPUT_DIR.resolve(basename + ".report.html")).exists();
 		assertThat(OUTPUT_DIR.resolve(basename + ".treedump.txt")).exists();
-		assertThat(OUTPUT_DIR.resolve(basename + ".xlsx")).exists();
 	}
 
 	/**
