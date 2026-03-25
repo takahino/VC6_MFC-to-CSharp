@@ -80,6 +80,9 @@ public class Main {
 	 *            コマンドライン引数
 	 */
 	public static void main(String[] args) throws IOException {
+		long startMs = System.currentTimeMillis();
+		LOG.info("=== cpp2csharp 起動 ===");
+
 		if (args.length < 1) {
 			LOG.error("使用方法: cpp-to-csharp [--no-excel] <入力C++ファイル> [ルールディレクトリ]");
 			System.exit(1);
@@ -104,6 +107,7 @@ public class Main {
 			System.exit(1);
 		}
 
+		LOG.info("ルールロード開始 (+{}ms)", System.currentTimeMillis() - startMs);
 		ConversionRuleLoader loader = new ConversionRuleLoader(CppParserFactory.asLexerFactory());
 		ThreePassRuleSet ruleSet;
 		if (argList.size() >= 2) {
@@ -121,9 +125,9 @@ public class Main {
 			System.err.println("ルールが見つかりません。引数にルールディレクトリを指定してください。");
 			System.err.println("  java -jar cpp2csharp.jar [--no-excel] <ファイル or ディレクトリ> <ルールディレクトリ>");
 		}
-		LOG.info("ルール: main={} フェーズ, pre={} フェーズ, post={} フェーズ, comby={} フェーズ, dynamic={} スペック",
-				ruleSet.mainPhases().size(), ruleSet.prePhases().size(), ruleSet.postPhases().size(),
-				ruleSet.combyPhases().size(), ruleSet.dynamicSpecs().size());
+		LOG.info("ルールロード完了 (+{}ms): main={} フェーズ, pre={} フェーズ, post={} フェーズ, comby={} フェーズ, dynamic={} スペック",
+				System.currentTimeMillis() - startMs, ruleSet.mainPhases().size(), ruleSet.prePhases().size(),
+				ruleSet.postPhases().size(), ruleSet.combyPhases().size(), ruleSet.dynamicSpecs().size());
 
 		if (discoverMode) {
 			if (!Files.isDirectory(inputFile)) {
@@ -152,10 +156,11 @@ public class Main {
 			// 等が混在するため禁止。
 			CppToCSharpConverter converter = new CppToCSharpConverter(excelEnabled);
 
-			LOG.info("処理開始: ファイル={}", inputFile.toAbsolutePath().normalize());
+			String cppSource = Files.readString(inputFile, StandardCharsets.UTF_8);
+			LOG.info("処理開始 (+{}ms): ファイル={} ({}行, {}bytes)", System.currentTimeMillis() - startMs,
+					inputFile.toAbsolutePath().normalize(), cppSource.lines().count(), cppSource.length());
 			LOG.info("---");
 
-			String cppSource = Files.readString(inputFile, StandardCharsets.UTF_8);
 			ConversionResult result = converter.convertSourceThreePass(cppSource, ruleSet);
 
 			if (!result.getParseErrors().isEmpty()) {

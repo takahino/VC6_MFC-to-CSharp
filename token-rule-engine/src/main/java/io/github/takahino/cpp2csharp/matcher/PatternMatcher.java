@@ -580,6 +580,12 @@ public class PatternMatcher {
 	/**
 	 * 括弧深さ対応のアンカー探索ループ。 深さ 0 でアンカートークンを見つけたときのみキャプチャを試みる。 {@code captureFilter} に
 	 * {@code c -> true} を渡すと ABSTRACT_PARAM 版と等価。
+	 *
+	 * <p>
+	 * <strong>早期終了</strong>: depth 0 で {@code ;} または
+	 * {@code {}（ブロック開始）に達した場合は探索を打ち切る。 RECEIVER/ABSTRACT_PARAM のキャプチャは文境界を跨げないため、
+	 * 余分な線形走査を省いて O(T²) → O(T×K) に改善する。
+	 * </p>
 	 */
 	private int searchByAnchor(List<ConversionToken> pattern, int patIdx, int captureKey, List<String> tokens,
 			int tokIdx, Map<Integer, List<String>> captures, String anchorValue,
@@ -598,6 +604,12 @@ public class PatternMatcher {
 						return result;
 					}
 				}
+			}
+			// depth 0 で文境界（;）またはブロック開始（{）に達したら探索終了。
+			// RECEIVER/ABSTRACT_PARAM は `;` を跨げない（ReceiverCapturePolicy が depth 0 の `;`
+			// を拒否）。`{` 到達時も既存ルールでは跨ぎが不要なため早期終了で正確性が保たれる。
+			if (tracker.atSurface() && (";".equals(t) || "{".equals(t))) {
+				break;
 			}
 			if (!tracker.track(t) && !t.equals(anchorValue)) {
 				break;

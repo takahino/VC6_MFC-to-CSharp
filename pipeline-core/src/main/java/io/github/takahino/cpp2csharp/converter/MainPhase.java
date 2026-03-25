@@ -34,8 +34,11 @@ package io.github.takahino.cpp2csharp.converter;
 import io.github.takahino.cpp2csharp.dynamic.DynamicRuleGenerator;
 import io.github.takahino.cpp2csharp.dynamic.DynamicRuleSpec;
 import io.github.takahino.cpp2csharp.matcher.ReceiverValidator;
+import io.github.takahino.cpp2csharp.retokenize.RetokenizeResult;
+import io.github.takahino.cpp2csharp.retokenize.Retokenizer;
 import io.github.takahino.cpp2csharp.rule.ConversionRule;
 import io.github.takahino.cpp2csharp.rule.ConversionRuleLoader;
+import io.github.takahino.cpp2csharp.rule.LanguageLexerFactory;
 import io.github.takahino.cpp2csharp.transform.Transformer;
 import io.github.takahino.cpp2csharp.tree.AstNode;
 import org.slf4j.Logger;
@@ -43,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * MAIN フェーズの実装。静的ルール（{@code .rule}）と動的ルール（{@code .drule}）を適用する。
@@ -81,6 +85,7 @@ public class MainPhase implements ConversionPhase {
 	 */
 	private final List<int[]> functionDefinitionRanges;
 	private final ReceiverValidator receiverValidator;
+	private final Retokenizer retokenizer;
 
 	/**
 	 * @param mainPhases
@@ -96,7 +101,7 @@ public class MainPhase implements ConversionPhase {
 	 */
 	public MainPhase(List<List<ConversionRule>> mainPhases, List<DynamicRuleSpec> dynamicSpecs, Transformer transformer,
 			ConversionRuleLoader ruleLoader, List<int[]> functionDefinitionRanges) {
-		this(mainPhases, dynamicSpecs, transformer, ruleLoader, functionDefinitionRanges, null);
+		this(mainPhases, dynamicSpecs, transformer, ruleLoader, functionDefinitionRanges, null, null);
 	}
 
 	/**
@@ -116,12 +121,35 @@ public class MainPhase implements ConversionPhase {
 	public MainPhase(List<List<ConversionRule>> mainPhases, List<DynamicRuleSpec> dynamicSpecs, Transformer transformer,
 			ConversionRuleLoader ruleLoader, List<int[]> functionDefinitionRanges,
 			ReceiverValidator receiverValidator) {
+		this(mainPhases, dynamicSpecs, transformer, ruleLoader, functionDefinitionRanges, receiverValidator, null);
+	}
+
+	/**
+	 * @param mainPhases
+	 *            静的 MAIN フェーズルール群
+	 * @param dynamicSpecs
+	 *            動的ルール仕様（空リストの場合は動的生成しない）
+	 * @param transformer
+	 *            変換エンジン（converter と共有）
+	 * @param ruleLoader
+	 *            動的ルール生成に使用するルールローダー
+	 * @param functionDefinitionRanges
+	 *            ParseTree から抽出した関数定義範囲（空リストでフォールバック）
+	 * @param receiverValidator
+	 *            RECEIVER キャプチャの妥当性検証器（null の場合はプリフィルタのみ使用）
+	 * @param lexerFactory
+	 *            MAINサブフェーズ間の再トークン化に使用するファクトリ（null の場合は再トークン化を行わない）
+	 */
+	public MainPhase(List<List<ConversionRule>> mainPhases, List<DynamicRuleSpec> dynamicSpecs, Transformer transformer,
+			ConversionRuleLoader ruleLoader, List<int[]> functionDefinitionRanges, ReceiverValidator receiverValidator,
+			LanguageLexerFactory lexerFactory) {
 		this.mainPhases = mainPhases;
 		this.dynamicSpecs = dynamicSpecs;
 		this.transformer = transformer;
 		this.ruleLoader = ruleLoader;
 		this.functionDefinitionRanges = functionDefinitionRanges;
 		this.receiverValidator = receiverValidator;
+		this.retokenizer = new Retokenizer(lexerFactory);
 	}
 
 	@Override
@@ -148,43 +176,78 @@ public class MainPhase implements ConversionPhase {
 		List<PhaseSnapshot> snapshots = new ArrayList<>();
 
 		if (!effectiveMainPhases.isEmpty()) {
-			List<TokenUnit> units = FunctionUnitSplitter.split(ctx.tokenNodes(), functionDefinitionRanges);
-			LOGGER.info("MAIN フェーズ開始: {} フェーズ, {} 単位 (ParseTree範囲={})", effectiveMainPhases.size(), units.size(),
+			LOGGER.info("MAIN フェーズ開始: {} サブフェーズ (ParseTree範囲={})", effectiveMainPhases.size(),
 					functionDefinitionRanges.isEmpty() ? "なし(全体1単位)" : functionDefinitionRanges.size() + "件");
 
 			// state を 1 回だけリセット（ユニットをまたいで appliedTransforms 等を累積させる）
 			transformer.prepareForNewConversion(ctx.excelEnabled());
 			// ファイル全体の初期状態を STEP 0 として 1 回だけ書き込む
 			transformer.writeInitialVizState(ctx.tokenNodes());
-			mainResult = new ArrayList<>();
+
+			List<AstNode> currentTokenNodes = ctx.tokenNodes();
+			Map<Integer, List<String>> currentComments = ctx.commentsBeforeToken();
+			List<int[]> currentRanges = functionDefinitionRanges;
+
 			List<String> unitOutputDumps = new ArrayList<>();
 			List<UnitLabel> unitLabels = new ArrayList<>();
+
 			try {
-				for (TokenUnit unit : units) {
-					if (unit.tokens().isEmpty()) {
-						continue;
+				for (int phaseIdx = 0; phaseIdx < effectiveMainPhases.size(); phaseIdx++) {
+					List<ConversionRule> subPhaseRules = effectiveMainPhases.get(phaseIdx);
+					boolean isLast = (phaseIdx == effectiveMainPhases.size() - 1);
+
+					List<TokenUnit> units = FunctionUnitSplitter.split(currentTokenNodes, currentRanges);
+					LOGGER.info("MAIN サブフェーズ {}/{}: {} 単位", phaseIdx + 1, effectiveMainPhases.size(), units.size());
+
+					List<AstNode> phaseResult = new ArrayList<>();
+					List<String> phaseUnitOutputDumps = new ArrayList<>();
+					List<UnitLabel> phaseUnitLabels = new ArrayList<>();
+
+					for (TokenUnit unit : units) {
+						if (unit.tokens().isEmpty()) {
+							continue;
+						}
+						List<AstNode> unitResult = transformer.processUnitReturnNodes(unit.tokens(),
+								List.of(subPhaseRules), currentComments);
+						phaseResult.addAll(unitResult);
+						// 全ユニット（gap/body）の変換後テキストを収集
+						phaseUnitOutputDumps.add(transformer.buildOutput(unitResult, currentComments));
+						phaseUnitLabels.add(unit.label());
 					}
-					List<AstNode> unitResult = transformer.processUnitReturnNodes(unit.tokens(), effectiveMainPhases,
-							ctx.commentsBeforeToken());
-					mainResult.addAll(unitResult);
-					// 全ユニット（gap/body）の変換後テキストを収集（.cpp.txt と N を揃えるため）
-					unitOutputDumps.add(transformer.buildOutput(unitResult, ctx.commentsBeforeToken()));
-					unitLabels.add(unit.label());
+
+					currentTokenNodes = phaseResult;
+					// 最後のサブフェーズの unitOutputDumps/unitLabels を保持（デバッグファイル出力は最終状態を反映）
+					unitOutputDumps = phaseUnitOutputDumps;
+					unitLabels = phaseUnitLabels;
+
+					String phaseCode = transformer.buildOutput(currentTokenNodes, currentComments);
+					snapshots.add(new PhaseSnapshot("MAIN-" + (phaseIdx + 1), phaseCode));
+
+					if (!isLast) {
+						// サブフェーズ切り替え時に再トークン化: 合成トークンを分解し直す
+						RetokenizeResult retokenized = retokenizer.retokenize(currentTokenNodes, currentComments);
+						LOGGER.info("MAIN サブフェーズ {} 後 再トークン化: {} トークン", phaseIdx + 1, retokenized.tokenNodes().size());
+						currentTokenNodes = retokenized.tokenNodes();
+						currentComments = retokenized.commentsBeforeToken();
+						// 再トークン化後は stream index が再採番されるため元の範囲は無効
+						currentRanges = List.of();
+					}
 				}
 			} finally {
 				transformer.closeVizWriter();
 			}
 
+			mainResult = currentTokenNodes;
+
 			// 全ユニット完了後: 結合結果に対して診断・ニアミススキャンを 1 回実行
 			transformer.runPostTransformScans(mainResult, effectiveMainPhases);
 
-			String code = transformer.buildOutput(mainResult, ctx.commentsBeforeToken());
-			snapshots.add(new PhaseSnapshot("MAIN-1", code));
+			String code = transformer.buildOutput(mainResult, currentComments);
 			LOGGER.info("MAIN フェーズ完了: {} トークン", mainResult.size());
 
 			// logs は空（appliedTransforms は transformer フィールド経由で converter が収集）
-			return new PhaseExecutionResult(mainResult, ctx.commentsBeforeToken(), code, snapshots, List.of(),
-					unitOutputDumps, unitLabels);
+			return new PhaseExecutionResult(mainResult, currentComments, code, snapshots, List.of(), unitOutputDumps,
+					unitLabels);
 		} else {
 			// MAIN ルールが空の場合も Transformer の state をリセットする
 			transformer.prepareForNewConversion(ctx.excelEnabled());
