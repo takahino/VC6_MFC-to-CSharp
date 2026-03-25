@@ -180,9 +180,7 @@ public class MainPhase implements ConversionPhase {
 					functionDefinitionRanges.isEmpty() ? "なし(全体1単位)" : functionDefinitionRanges.size() + "件");
 
 			// state を 1 回だけリセット（ユニットをまたいで appliedTransforms 等を累積させる）
-			transformer.prepareForNewConversion(ctx.excelEnabled());
-			// ファイル全体の初期状態を STEP 0 として 1 回だけ書き込む
-			transformer.writeInitialVizState(ctx.tokenNodes());
+			transformer.prepareForNewConversion();
 
 			List<AstNode> currentTokenNodes = ctx.tokenNodes();
 			Map<Integer, List<String>> currentComments = ctx.commentsBeforeToken();
@@ -191,50 +189,46 @@ public class MainPhase implements ConversionPhase {
 			List<String> unitOutputDumps = new ArrayList<>();
 			List<UnitLabel> unitLabels = new ArrayList<>();
 
-			try {
-				for (int phaseIdx = 0; phaseIdx < effectiveMainPhases.size(); phaseIdx++) {
-					List<ConversionRule> subPhaseRules = effectiveMainPhases.get(phaseIdx);
-					boolean isLast = (phaseIdx == effectiveMainPhases.size() - 1);
+			for (int phaseIdx = 0; phaseIdx < effectiveMainPhases.size(); phaseIdx++) {
+				List<ConversionRule> subPhaseRules = effectiveMainPhases.get(phaseIdx);
+				boolean isLast = (phaseIdx == effectiveMainPhases.size() - 1);
 
-					List<TokenUnit> units = FunctionUnitSplitter.split(currentTokenNodes, currentRanges);
-					LOGGER.info("MAIN サブフェーズ {}/{}: {} 単位", phaseIdx + 1, effectiveMainPhases.size(), units.size());
+				List<TokenUnit> units = FunctionUnitSplitter.split(currentTokenNodes, currentRanges);
+				LOGGER.info("MAIN サブフェーズ {}/{}: {} 単位", phaseIdx + 1, effectiveMainPhases.size(), units.size());
 
-					List<AstNode> phaseResult = new ArrayList<>();
-					List<String> phaseUnitOutputDumps = new ArrayList<>();
-					List<UnitLabel> phaseUnitLabels = new ArrayList<>();
+				List<AstNode> phaseResult = new ArrayList<>();
+				List<String> phaseUnitOutputDumps = new ArrayList<>();
+				List<UnitLabel> phaseUnitLabels = new ArrayList<>();
 
-					for (TokenUnit unit : units) {
-						if (unit.tokens().isEmpty()) {
-							continue;
-						}
-						List<AstNode> unitResult = transformer.processUnitReturnNodes(unit.tokens(),
-								List.of(subPhaseRules), currentComments);
-						phaseResult.addAll(unitResult);
-						// 全ユニット（gap/body）の変換後テキストを収集
-						phaseUnitOutputDumps.add(transformer.buildOutput(unitResult, currentComments));
-						phaseUnitLabels.add(unit.label());
+				for (TokenUnit unit : units) {
+					if (unit.tokens().isEmpty()) {
+						continue;
 					}
-
-					currentTokenNodes = phaseResult;
-					// 最後のサブフェーズの unitOutputDumps/unitLabels を保持（デバッグファイル出力は最終状態を反映）
-					unitOutputDumps = phaseUnitOutputDumps;
-					unitLabels = phaseUnitLabels;
-
-					String phaseCode = transformer.buildOutput(currentTokenNodes, currentComments);
-					snapshots.add(new PhaseSnapshot("MAIN-" + (phaseIdx + 1), phaseCode));
-
-					if (!isLast) {
-						// サブフェーズ切り替え時に再トークン化: 合成トークンを分解し直す
-						RetokenizeResult retokenized = retokenizer.retokenize(currentTokenNodes, currentComments);
-						LOGGER.info("MAIN サブフェーズ {} 後 再トークン化: {} トークン", phaseIdx + 1, retokenized.tokenNodes().size());
-						currentTokenNodes = retokenized.tokenNodes();
-						currentComments = retokenized.commentsBeforeToken();
-						// 再トークン化後は stream index が再採番されるため元の範囲は無効
-						currentRanges = List.of();
-					}
+					List<AstNode> unitResult = transformer.processUnitReturnNodes(unit.tokens(), List.of(subPhaseRules),
+							currentComments);
+					phaseResult.addAll(unitResult);
+					// 全ユニット（gap/body）の変換後テキストを収集
+					phaseUnitOutputDumps.add(transformer.buildOutput(unitResult, currentComments));
+					phaseUnitLabels.add(unit.label());
 				}
-			} finally {
-				transformer.closeVizWriter();
+
+				currentTokenNodes = phaseResult;
+				// 最後のサブフェーズの unitOutputDumps/unitLabels を保持（デバッグファイル出力は最終状態を反映）
+				unitOutputDumps = phaseUnitOutputDumps;
+				unitLabels = phaseUnitLabels;
+
+				String phaseCode = transformer.buildOutput(currentTokenNodes, currentComments);
+				snapshots.add(new PhaseSnapshot("MAIN-" + (phaseIdx + 1), phaseCode));
+
+				if (!isLast) {
+					// サブフェーズ切り替え時に再トークン化: 合成トークンを分解し直す
+					RetokenizeResult retokenized = retokenizer.retokenize(currentTokenNodes, currentComments);
+					LOGGER.info("MAIN サブフェーズ {} 後 再トークン化: {} トークン", phaseIdx + 1, retokenized.tokenNodes().size());
+					currentTokenNodes = retokenized.tokenNodes();
+					currentComments = retokenized.commentsBeforeToken();
+					// 再トークン化後は stream index が再採番されるため元の範囲は無効
+					currentRanges = List.of();
+				}
 			}
 
 			mainResult = currentTokenNodes;
@@ -250,7 +244,7 @@ public class MainPhase implements ConversionPhase {
 					unitLabels);
 		} else {
 			// MAIN ルールが空の場合も Transformer の state をリセットする
-			transformer.prepareForNewConversion(ctx.excelEnabled());
+			transformer.prepareForNewConversion();
 			mainResult = ctx.tokenNodes();
 		}
 

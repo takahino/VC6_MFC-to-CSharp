@@ -67,7 +67,7 @@ class DynamicRuleFromExternalValuesTest {
 
 	@BeforeEach
 	void setUp() {
-		converter = new CppToCSharpConverter(false);
+		converter = new CppToCSharpConverter();
 		generator = new DynamicRuleGenerator(new ConversionRuleLoader(CppParserFactory.asLexerFactory()));
 	}
 

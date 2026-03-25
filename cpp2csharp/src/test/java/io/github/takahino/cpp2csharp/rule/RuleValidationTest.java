@@ -34,24 +34,12 @@ package io.github.takahino.cpp2csharp.rule;
 import io.github.takahino.cpp2csharp.converter.ConversionResult;
 import io.github.takahino.cpp2csharp.converter.CppToCSharpConverter;
 import io.github.takahino.cpp2csharp.matcher.CppParserFactory;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -205,7 +193,6 @@ class RuleValidationTest {
 		String summaryHtml = buildSummaryHtml(fileResults, totalPassed, totalFailed);
 		Files.writeString(OUTPUT_DIR.resolve("summary.html"), summaryHtml, StandardCharsets.UTF_8);
 
-		writeSummaryXlsx(fileResults, totalPassed, totalFailed);
 	}
 
 	private String buildSummaryText(List<RuleFileTestResult> results, int totalPassed, int totalFailed) {
@@ -267,90 +254,6 @@ class RuleValidationTest {
 		sb.append("  </table>\n");
 		sb.append("</body>\n</html>\n");
 		return sb.toString();
-	}
-
-	private void writeSummaryXlsx(List<RuleFileTestResult> results, int totalPassed, int totalFailed)
-			throws IOException {
-		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-			Optional<Date> epoch = Optional.of(new Date(0L));
-			workbook.getProperties().getCoreProperties().setCreated(epoch);
-			workbook.getProperties().getCoreProperties().setModified(epoch);
-
-			Sheet sheet = workbook.createSheet("Summary");
-			int rowIdx = 0;
-
-			writeCell(sheet, rowIdx, 0, "ルール内蔵テスト サマリー");
-			rowIdx++;
-			rowIdx++; // blank row
-			writeCell(sheet, rowIdx, 0, "成功");
-			writeCell(sheet, rowIdx, 1, totalPassed);
-			rowIdx++;
-			writeCell(sheet, rowIdx, 0, "失敗");
-			writeCell(sheet, rowIdx, 1, totalFailed);
-			rowIdx++;
-			writeCell(sheet, rowIdx, 0, "合計");
-			writeCell(sheet, rowIdx, 1, totalPassed + totalFailed);
-			rowIdx++;
-			rowIdx++; // blank row
-
-			Row header = sheet.createRow(rowIdx++);
-			header.createCell(0).setCellValue("ファイル");
-			header.createCell(1).setCellValue("状態");
-			header.createCell(2).setCellValue("No");
-			header.createCell(3).setCellValue("from");
-			header.createCell(4).setCellValue("テスト数");
-			header.createCell(5).setCellValue("合格数");
-			header.createCell(6).setCellValue("エラー数");
-
-			for (RuleFileTestResult result : results) {
-				String status = result.failed() > 0 ? "FAIL" : "PASS";
-				for (int i = 0; i < result.ruleSummaries().size(); i++) {
-					RuleSummary summary = result.ruleSummaries().get(i);
-					Row row = sheet.createRow(rowIdx++);
-					row.createCell(0).setCellValue(result.relativePath());
-					row.createCell(1).setCellValue(status);
-					row.createCell(2).setCellValue(i + 1);
-					row.createCell(3).setCellValue(summary.fromPattern());
-					row.createCell(4).setCellValue(summary.testCount());
-					row.createCell(5).setCellValue(summary.passedCount());
-					row.createCell(6).setCellValue(summary.errorCount());
-				}
-			}
-
-			for (int i = 0; i <= 6; i++) {
-				sheet.autoSizeColumn(i);
-			}
-
-			Path outPath = OUTPUT_DIR.resolve("summary.xlsx");
-			ByteArrayOutputStream buf = new ByteArrayOutputStream();
-			workbook.write(buf);
-			try (OutputStream os = Files.newOutputStream(outPath);
-					ZipOutputStream zout = new ZipOutputStream(os);
-					ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(buf.toByteArray()))) {
-				ZipEntry entry;
-				while ((entry = zin.getNextEntry()) != null) {
-					ZipEntry fixed = new ZipEntry(entry.getName());
-					fixed.setTime(0L);
-					zout.putNextEntry(fixed);
-					zin.transferTo(zout);
-					zout.closeEntry();
-				}
-			}
-		}
-	}
-
-	private void writeCell(Sheet sheet, int rowIdx, int colIdx, String value) {
-		Row row = sheet.getRow(rowIdx);
-		if (row == null)
-			row = sheet.createRow(rowIdx);
-		row.createCell(colIdx).setCellValue(value);
-	}
-
-	private void writeCell(Sheet sheet, int rowIdx, int colIdx, int value) {
-		Row row = sheet.getRow(rowIdx);
-		if (row == null)
-			row = sheet.createRow(rowIdx);
-		row.createCell(colIdx).setCellValue(value);
 	}
 
 	private static String abbreviate(String text, int maxLength) {

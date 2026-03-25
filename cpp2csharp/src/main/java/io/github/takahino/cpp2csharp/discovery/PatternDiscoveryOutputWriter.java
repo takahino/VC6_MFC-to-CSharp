@@ -31,25 +31,18 @@
 
 package io.github.takahino.cpp2csharp.discovery;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 /**
- * パターン発見結果を Excel (.xlsx) と HTML (.html) に出力するライター。
+ * パターン発見結果を HTML (.html) に出力するライター。
  */
 public class PatternDiscoveryOutputWriter {
 
@@ -59,159 +52,17 @@ public class PatternDiscoveryOutputWriter {
 			"出現ファイル"};
 
 	/**
-	 * パターン発見結果を Excel と HTML に出力する。
+	 * パターン発見結果を HTML に出力する。
 	 *
 	 * @param outputDir
 	 *            出力先ディレクトリ
 	 * @param result
 	 *            パターン発見結果
-	 * @param excelEnabled
-	 *            Excel 出力の有効/無効
 	 * @throws IOException
 	 *             ファイル書き込みに失敗した場合
 	 */
-	public void write(Path outputDir, PatternDiscoveryResult result, boolean excelEnabled) throws IOException {
+	public void write(Path outputDir, PatternDiscoveryResult result) throws IOException {
 		writeHtml(outputDir, result);
-		if (excelEnabled) {
-			writeExcel(outputDir, result);
-		}
-	}
-
-	// -------------------------------------------------------------------------
-	// Excel 出力
-	// -------------------------------------------------------------------------
-
-	private void writeExcel(Path outputDir, PatternDiscoveryResult result) throws IOException {
-		Path xlsxPath = outputDir.resolve("pattern_discovery.xlsx");
-
-		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-			// スタイル定義
-			CellStyle headerStyle = createHeaderStyle(workbook);
-			CellStyle uncoveredStyle = createColorStyle(workbook, (short) 0xFFC0, (short) 0x8080, (short) 0x8080); // 薄赤
-			CellStyle coveredStyle = createColorStyle(workbook, (short) 0x8080, (short) 0xFFC0, (short) 0x8080); // 薄緑
-			CellStyle normalStyle = workbook.createCellStyle();
-
-			// Sheet1: ルール候補一覧（全パターン）
-			Sheet sheet1 = workbook.createSheet("ルール候補一覧");
-			writeSheet(sheet1, result.allPatterns(), headerStyle, uncoveredStyle, coveredStyle, normalStyle);
-
-			// Sheet2: ルール未作成（優先度順）
-			Sheet sheet2 = workbook.createSheet("ルール未作成（優先度順）");
-			writeSheet(sheet2, result.uncoveredPatterns(), headerStyle, uncoveredStyle, coveredStyle, normalStyle);
-
-			// Sheet3: ルール作成済み
-			Sheet sheet3 = workbook.createSheet("ルール作成済み");
-			writeSheet(sheet3, result.coveredPatterns(), headerStyle, uncoveredStyle, coveredStyle, normalStyle);
-
-			// Sheet4: ファイル別サマリー
-			Sheet sheet4 = workbook.createSheet("ファイル別サマリー");
-			writeFileSummarySheet(sheet4, result, headerStyle, normalStyle);
-
-			// zip エントリのタイムスタンプを固定してバイナリ再現性を確保
-			ByteArrayOutputStream buf = new ByteArrayOutputStream();
-			workbook.write(buf);
-			try (var os = Files.newOutputStream(xlsxPath);
-					ZipOutputStream zout = new ZipOutputStream(os);
-					ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(buf.toByteArray()))) {
-				ZipEntry entry;
-				while ((entry = zin.getNextEntry()) != null) {
-					ZipEntry fixed = new ZipEntry(entry.getName());
-					fixed.setTime(0L);
-					zout.putNextEntry(fixed);
-					zin.transferTo(zout);
-					zout.closeEntry();
-				}
-			}
-		}
-		LOG.info("Excel 出力: {}", xlsxPath);
-	}
-
-	private void writeSheet(Sheet sheet, List<CandidatePattern> patterns, CellStyle headerStyle,
-			CellStyle uncoveredStyle, CellStyle coveredStyle, CellStyle normalStyle) {
-		// ヘッダ行
-		Row headerRow = sheet.createRow(0);
-		for (int c = 0; c < COLUMNS.length; c++) {
-			Cell cell = headerRow.createCell(c);
-			cell.setCellValue(COLUMNS[c]);
-			cell.setCellStyle(headerStyle);
-		}
-
-		// データ行
-		for (int i = 0; i < patterns.size(); i++) {
-			CandidatePattern p = patterns.get(i);
-			Row row = sheet.createRow(i + 1);
-			CellStyle rowStyle = p.hasRule() ? coveredStyle : uncoveredStyle;
-
-			setCell(row, 0, String.valueOf(i + 1), rowStyle);
-			setCell(row, 1, p.type().name(), rowStyle);
-			setCell(row, 2, p.identifierName(), rowStyle);
-			setCell(row, 3, p.accessOperator() != null ? p.accessOperator() : "", rowStyle);
-			setCell(row, 4, p.argCount() < 0 ? "-" : String.valueOf(p.argCount()), rowStyle);
-			setCell(row, 5, String.valueOf(p.occurrenceCount()), rowStyle);
-			setCell(row, 6, p.hasRule() ? "○" : "×", rowStyle);
-			setCell(row, 7, p.ruleFile(), rowStyle);
-			setCell(row, 8, String.join(", ", p.occurrenceFiles()), rowStyle);
-		}
-
-		for (int c = 0; c < COLUMNS.length; c++) {
-			sheet.autoSizeColumn(c);
-		}
-	}
-
-	private void writeFileSummarySheet(Sheet sheet, PatternDiscoveryResult result, CellStyle headerStyle,
-			CellStyle normalStyle) {
-		Row headerRow = sheet.createRow(0);
-		String[] cols = {"ファイル名", "パターン数"};
-		for (int c = 0; c < cols.length; c++) {
-			Cell cell = headerRow.createCell(c);
-			cell.setCellValue(cols[c]);
-			cell.setCellStyle(headerStyle);
-		}
-
-		// ファイルごとのパターン数を集計
-		Map<String, Long> filePatternCount = result.allPatterns().stream().flatMap(p -> p.occurrenceFiles().stream())
-				.collect(Collectors.groupingBy(f -> f, Collectors.counting()));
-
-		List<Map.Entry<String, Long>> sorted = filePatternCount.entrySet().stream()
-				.sorted(Map.Entry.<String, Long>comparingByValue().reversed()).toList();
-
-		for (int i = 0; i < sorted.size(); i++) {
-			Row row = sheet.createRow(i + 1);
-			setCell(row, 0, sorted.get(i).getKey(), normalStyle);
-			setCell(row, 1, String.valueOf(sorted.get(i).getValue()), normalStyle);
-		}
-
-		sheet.autoSizeColumn(0);
-		sheet.autoSizeColumn(1);
-	}
-
-	private void setCell(Row row, int col, String value, CellStyle style) {
-		Cell cell = row.createCell(col);
-		cell.setCellValue(value != null ? value : "");
-		cell.setCellStyle(style);
-	}
-
-	private CellStyle createHeaderStyle(Workbook workbook) {
-		CellStyle style = workbook.createCellStyle();
-		Font font = workbook.createFont();
-		font.setBold(true);
-		style.setFont(font);
-		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		return style;
-	}
-
-	private CellStyle createColorStyle(Workbook workbook, short r, short g, short b) {
-		// IndexedColors で近似色を選択（XSSFColor は使用しない）
-		CellStyle style = workbook.createCellStyle();
-		// 赤系 = ROSE, 緑系 = LIGHT_GREEN
-		if (r > g) {
-			style.setFillForegroundColor(IndexedColors.ROSE.getIndex());
-		} else {
-			style.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
-		}
-		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		return style;
 	}
 
 	// -------------------------------------------------------------------------

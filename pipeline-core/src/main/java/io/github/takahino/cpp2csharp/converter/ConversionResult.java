@@ -35,7 +35,6 @@ import io.github.takahino.cpp2csharp.transform.AppliedTransform;
 import io.github.takahino.cpp2csharp.transform.DiagnosticCandidate;
 import io.github.takahino.cpp2csharp.transform.Transformer.TransformError;
 
-import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -65,9 +64,6 @@ public final class ConversionResult {
 	/** 診断候補リスト（フィルタ無視再マッチで検出した要確認候補） */
 	private final List<DiagnosticCandidate> diagnosticCandidates;
 
-	/** 変換過程可視化用一時ファイルのパス（Excel 無効時は null） */
-	private final Path visualizationTempFile;
-
 	/** PRE/POST/COMBY フェーズの適用ログ */
 	private final List<PhaseTransformLog> phaseTransformLogs;
 
@@ -88,8 +84,7 @@ public final class ConversionResult {
 	 */
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms) {
-		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, null, null, List.of(),
-				List.of());
+		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, null, List.of(), List.of());
 	}
 
 	/**
@@ -111,21 +106,8 @@ public final class ConversionResult {
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms,
 			List<DiagnosticCandidate> diagnosticCandidates) {
-		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates, null,
-				List.of(), List.of());
-	}
-
-	/**
-	 * コンストラクタ（可視化用一時ファイル付き）。
-	 *
-	 * @param visualizationTempFile
-	 *            変換過程可視化用一時ファイルのパス（null の場合は Excel 出力しない）
-	 */
-	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
-			String initialTreeDump, List<AppliedTransform> appliedTransforms,
-			List<DiagnosticCandidate> diagnosticCandidates, Path visualizationTempFile) {
-		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates,
-				visualizationTempFile, List.of(), List.of());
+		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates, List.of(),
+				List.of());
 	}
 
 	/**
@@ -136,10 +118,9 @@ public final class ConversionResult {
 	 */
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms,
-			List<DiagnosticCandidate> diagnosticCandidates, Path visualizationTempFile,
-			List<PhaseTransformLog> phaseTransformLogs) {
+			List<DiagnosticCandidate> diagnosticCandidates, List<PhaseTransformLog> phaseTransformLogs) {
 		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates,
-				visualizationTempFile, phaseTransformLogs, List.of());
+				phaseTransformLogs, List.of());
 	}
 
 	/**
@@ -152,10 +133,10 @@ public final class ConversionResult {
 	 */
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms,
-			List<DiagnosticCandidate> diagnosticCandidates, Path visualizationTempFile,
-			List<PhaseTransformLog> phaseTransformLogs, List<PhaseSnapshot> phaseSnapshots) {
+			List<DiagnosticCandidate> diagnosticCandidates, List<PhaseTransformLog> phaseTransformLogs,
+			List<PhaseSnapshot> phaseSnapshots) {
 		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates,
-				visualizationTempFile, phaseTransformLogs, phaseSnapshots, List.of());
+				phaseTransformLogs, phaseSnapshots, List.of());
 	}
 
 	/**
@@ -166,11 +147,10 @@ public final class ConversionResult {
 	 */
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms,
-			List<DiagnosticCandidate> diagnosticCandidates, Path visualizationTempFile,
-			List<PhaseTransformLog> phaseTransformLogs, List<PhaseSnapshot> phaseSnapshots,
-			List<String> unitSourceDumps) {
+			List<DiagnosticCandidate> diagnosticCandidates, List<PhaseTransformLog> phaseTransformLogs,
+			List<PhaseSnapshot> phaseSnapshots, List<String> unitSourceDumps) {
 		this(csCode, transformErrors, parseErrors, initialTreeDump, appliedTransforms, diagnosticCandidates,
-				visualizationTempFile, phaseTransformLogs, phaseSnapshots, unitSourceDumps, List.of(), List.of());
+				phaseTransformLogs, phaseSnapshots, unitSourceDumps, List.of(), List.of());
 	}
 
 	/**
@@ -185,30 +165,20 @@ public final class ConversionResult {
 	 */
 	public ConversionResult(String csCode, List<TransformError> transformErrors, List<String> parseErrors,
 			String initialTreeDump, List<AppliedTransform> appliedTransforms,
-			List<DiagnosticCandidate> diagnosticCandidates, Path visualizationTempFile,
-			List<PhaseTransformLog> phaseTransformLogs, List<PhaseSnapshot> phaseSnapshots,
-			List<String> unitSourceDumps, List<String> unitOutputDumps, List<FunctionUnitEntry> functionUnitEntries) {
+			List<DiagnosticCandidate> diagnosticCandidates, List<PhaseTransformLog> phaseTransformLogs,
+			List<PhaseSnapshot> phaseSnapshots, List<String> unitSourceDumps, List<String> unitOutputDumps,
+			List<FunctionUnitEntry> functionUnitEntries) {
 		this.csCode = csCode;
 		this.transformErrors = List.copyOf(transformErrors);
 		this.parseErrors = List.copyOf(parseErrors);
 		this.initialTreeDump = initialTreeDump;
 		this.appliedTransforms = appliedTransforms != null ? List.copyOf(appliedTransforms) : List.of();
 		this.diagnosticCandidates = diagnosticCandidates != null ? List.copyOf(diagnosticCandidates) : List.of();
-		this.visualizationTempFile = visualizationTempFile;
 		this.phaseTransformLogs = phaseTransformLogs != null ? List.copyOf(phaseTransformLogs) : List.of();
 		this.phaseSnapshots = phaseSnapshots != null ? List.copyOf(phaseSnapshots) : List.of();
 		this.unitSourceDumps = unitSourceDumps != null ? List.copyOf(unitSourceDumps) : List.of();
 		this.unitOutputDumps = unitOutputDumps != null ? List.copyOf(unitOutputDumps) : List.of();
 		this.functionUnitEntries = functionUnitEntries != null ? List.copyOf(functionUnitEntries) : List.of();
-	}
-
-	/**
-	 * 変換過程可視化用一時ファイルのパスを返す。
-	 *
-	 * @return 一時ファイルのパス。Excel 無効時は null
-	 */
-	public Path getVisualizationTempFile() {
-		return visualizationTempFile;
 	}
 
 	/**

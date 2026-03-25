@@ -60,7 +60,7 @@ import static org.assertj.core.api.Assertions.*;
 @DisplayName("3パス統合テスト")
 class ThreePassIntegrationTest {
 
-	private final CppToCSharpConverter converter = new CppToCSharpConverter(false);
+	private final CppToCSharpConverter converter = new CppToCSharpConverter();
 	private final ConversionRuleLoader ruleLoader = new ConversionRuleLoader(CppParserFactory.asLexerFactory());
 	private final MultiReplaceRuleLoader mruleLoader = new MultiReplaceRuleLoader(CppParserFactory.asLexerFactory());
 
