@@ -38,31 +38,12 @@ import io.github.takahino.cpp2csharp.converter.PhaseTransformLog;
 import io.github.takahino.cpp2csharp.rule.ConversionRule;
 import io.github.takahino.cpp2csharp.transform.AppliedTransform;
 import io.github.takahino.cpp2csharp.transform.DiagnosticCandidate;
-import io.github.takahino.cpp2csharp.transform.TokenSnapshot;
 import io.github.takahino.cpp2csharp.transform.Transformer.TransformError;
 
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.ClientAnchor;
-import org.apache.poi.ss.usermodel.Comment;
-import org.apache.poi.ss.usermodel.CreationHelper;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.Date;
-import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -70,7 +51,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,39 +69,23 @@ import java.util.stream.Stream;
  */
 public class ConversionOutputWriter {
 
-	private static final Pattern STEP_PATTERN = Pattern.compile("^---STEP (\\d+)---$");
-
-	private final ExcelOutputConfig excelConfig;
 	private final String outputExtension;
 	private final Pattern basenamePattern;
 
 	/**
-	 * コンストラクタ。デフォルト設定（Excel 有効、出力拡張子 .cs）で初期化する。
+	 * コンストラクタ。出力拡張子はデフォルト .cs。
 	 */
 	public ConversionOutputWriter() {
-		this(ExcelOutputConfig.defaultConfig(), ".cs");
+		this(".cs");
 	}
 
 	/**
-	 * コンストラクタ。Excel 出力設定を指定可能。出力拡張子はデフォルト .cs。
+	 * コンストラクタ。出力拡張子を指定可能。
 	 *
-	 * @param excelConfig
-	 *            Excel 出力の設定
-	 */
-	public ConversionOutputWriter(ExcelOutputConfig excelConfig) {
-		this(excelConfig, ".cs");
-	}
-
-	/**
-	 * コンストラクタ。Excel 出力設定と出力拡張子を指定可能。
-	 *
-	 * @param excelConfig
-	 *            Excel 出力の設定
 	 * @param outputExtension
 	 *            出力ファイルの拡張子（例: ".cs"）
 	 */
-	public ConversionOutputWriter(ExcelOutputConfig excelConfig, String outputExtension) {
-		this.excelConfig = excelConfig != null ? excelConfig : ExcelOutputConfig.defaultConfig();
+	public ConversionOutputWriter(String outputExtension) {
 		this.outputExtension = outputExtension != null ? outputExtension : ".cs";
 		this.basenamePattern = Pattern.compile(Pattern.quote(this.outputExtension) + "$");
 	}
@@ -216,216 +180,6 @@ public class ConversionOutputWriter {
 			Files.writeString(jsonPath, buildFunctionUnitJson(entries), StandardCharsets.UTF_8);
 		}
 
-		// 変換過程 Excel 可視化を保存
-		if (excelConfig.isEnabled() && result.getVisualizationTempFile() != null) {
-			Path xlsxPath = outputPath.getParent().resolve(basename + ".xlsx");
-			try {
-				writeVisualizationExcel(result.getVisualizationTempFile(), result.getAppliedTransforms(), xlsxPath);
-			} finally {
-				try {
-					Files.deleteIfExists(result.getVisualizationTempFile());
-				} catch (IOException e) {
-					// 一時ファイル削除失敗は無視
-				}
-			}
-		}
-	}
-
-	/**
-	 * 一時ファイルから変換過程を読み込み、Excel に出力する。
-	 */
-	private void writeVisualizationExcel(Path tempFile, List<AppliedTransform> appliedTransforms, Path xlsxPath)
-			throws IOException {
-		List<List<TokenSnapshot>> steps = parseVisualizationTempFile(tempFile);
-		if (steps.isEmpty()) {
-			return;
-		}
-
-		int initialRowCount = steps.get(0).size();
-
-		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-			// タイムスタンプを固定してバイナリ再現性を確保（git diff 安定化）
-			Optional<Date> epoch = Optional.of(new Date(0L));
-			workbook.getProperties().getCoreProperties().setCreated(epoch);
-			workbook.getProperties().getCoreProperties().setModified(epoch);
-
-			Sheet sheet = workbook.createSheet("変換過程");
-			CellStyle changedStyle = workbook.createCellStyle();
-			changedStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.LIGHT_YELLOW.getIndex());
-			changedStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
-
-			// ヘッダー行
-			Row headerRow = sheet.createRow(0);
-			headerRow.createCell(0).setCellValue("No");
-			for (int col = 0; col < steps.size(); col++) {
-				headerRow.createCell(col + 1).setCellValue(col == 0 ? "初期" : "変換" + col + "後");
-			}
-
-			// 各ステップの行アライン済みトークン配列を事前計算
-			TokenSnapshot[][] alignedSteps = new TokenSnapshot[steps.size()][];
-			for (int stepIdx = 0; stepIdx < steps.size(); stepIdx++) {
-				alignedSteps[stepIdx] = expandToRowAligned(steps.get(stepIdx), stepIdx, appliedTransforms,
-						initialRowCount);
-			}
-			CreationHelper createHelper = workbook.getCreationHelper();
-			var drawingPatriarch = sheet.createDrawingPatriarch();
-
-			// データ行（行位置固定で展開）
-			for (int rowIdx = 0; rowIdx < initialRowCount; rowIdx++) {
-				Row row = sheet.createRow(rowIdx + 1);
-				row.createCell(0).setCellValue(rowIdx + 1);
-
-				for (int stepIdx = 0; stepIdx < steps.size(); stepIdx++) {
-					TokenSnapshot[] rowAligned = alignedSteps[stepIdx];
-					Cell cell = row.createCell(stepIdx + 1);
-					boolean isChanged = false;
-					String commentRule = null;
-					String mergedIdsStr = null;
-
-					if (rowAligned[rowIdx] != null) {
-						cell.setCellValue(rowAligned[rowIdx].id() + ": " + rowAligned[rowIdx].text());
-						if (stepIdx > 0 && appliedTransforms.size() >= stepIdx) {
-							AppliedTransform t = appliedTransforms.get(stepIdx - 1);
-							if (t.startIndex() >= 0 && t.endIndex() >= 0) {
-								if (rowIdx == t.startIndex() || (rowIdx > t.startIndex() && rowIdx < t.endIndex())) {
-									isChanged = true;
-									commentRule = t.ruleSource() + ": " + t.ruleFrom() + " -> " + t.ruleTo();
-									if (t.mergedIds() != null && !t.mergedIds().isEmpty()) {
-										mergedIdsStr = "id " + t.mergedIds().stream().map(String::valueOf)
-												.collect(Collectors.joining(",")) + " -> " + t.mergedIds().get(0);
-									}
-								}
-							}
-						}
-					}
-
-					if (isChanged) {
-						cell.setCellStyle(changedStyle);
-					}
-					if (commentRule != null || mergedIdsStr != null) {
-						ClientAnchor anchor = createHelper.createClientAnchor();
-						anchor.setCol1(cell.getColumnIndex());
-						anchor.setRow1(cell.getRowIndex());
-						Comment comment = drawingPatriarch.createCellComment(anchor);
-						StringBuilder commentText = new StringBuilder();
-						if (commentRule != null)
-							commentText.append(commentRule);
-						if (mergedIdsStr != null) {
-							if (!commentText.isEmpty())
-								commentText.append("\n");
-							commentText.append(mergedIdsStr);
-						}
-						comment.setString(createHelper.createRichTextString(commentText.toString()));
-						cell.setCellComment(comment);
-					}
-				}
-			}
-
-			for (int i = 0; i <= steps.size(); i++) {
-				sheet.autoSizeColumn(i);
-			}
-
-			// zip エントリのタイムスタンプも固定してバイナリ再現性を確保
-			ByteArrayOutputStream buf = new ByteArrayOutputStream();
-			workbook.write(buf);
-			try (var os = Files.newOutputStream(xlsxPath);
-					ZipOutputStream zout = new ZipOutputStream(os);
-					ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(buf.toByteArray()))) {
-				ZipEntry entry;
-				while ((entry = zin.getNextEntry()) != null) {
-					ZipEntry fixed = new ZipEntry(entry.getName());
-					fixed.setTime(0L);
-					zout.putNextEntry(fixed);
-					zin.transferTo(zout);
-					zout.closeEntry();
-				}
-			}
-		}
-	}
-
-	private static TokenSnapshot[] simpleCopy(List<TokenSnapshot> tokens, int initialRowCount) {
-		TokenSnapshot[] result = new TokenSnapshot[initialRowCount];
-		for (int i = 0; i < tokens.size() && i < initialRowCount; i++) {
-			result[i] = tokens.get(i);
-		}
-		return result;
-	}
-
-	private TokenSnapshot[] expandToRowAligned(List<TokenSnapshot> tokens, int stepIndex,
-			List<AppliedTransform> appliedTransforms, int initialRowCount) {
-		if (stepIndex == 0 || stepIndex > appliedTransforms.size()) {
-			return simpleCopy(tokens, initialRowCount);
-		}
-
-		AppliedTransform t = appliedTransforms.get(stepIndex - 1);
-		int start = t.startIndex();
-		int end = t.endIndex();
-		if (start < 0 || end < 0 || start >= initialRowCount || end > initialRowCount) {
-			return simpleCopy(tokens, initialRowCount);
-		}
-
-		TokenSnapshot[] result = new TokenSnapshot[initialRowCount];
-		for (int i = 0; i < start && i < tokens.size(); i++) {
-			result[i] = tokens.get(i);
-		}
-		if (start < tokens.size()) {
-			result[start] = tokens.get(start);
-		}
-		for (int i = start + 1; i < end; i++) {
-			result[i] = null;
-		}
-		for (int i = end; i < initialRowCount; i++) {
-			int srcIdx = start + 1 + (i - end);
-			if (srcIdx < tokens.size()) {
-				result[i] = tokens.get(srcIdx);
-			}
-		}
-		return result;
-	}
-
-	private List<List<TokenSnapshot>> parseVisualizationTempFile(Path tempFile) throws IOException {
-		List<List<TokenSnapshot>> steps = new ArrayList<>();
-		try (var reader = new BufferedReader(
-				new InputStreamReader(Files.newInputStream(tempFile), StandardCharsets.UTF_8))) {
-			List<TokenSnapshot> currentStep = null;
-			String line;
-			while ((line = reader.readLine()) != null) {
-				Matcher m = STEP_PATTERN.matcher(line.trim());
-				if (m.matches()) {
-					currentStep = new ArrayList<>();
-					steps.add(currentStep);
-				} else if (currentStep != null && line.contains("\t")) {
-					int tabIdx = line.indexOf('\t');
-					int id = Integer.parseInt(line.substring(0, tabIdx));
-					String text = unescapeForVisualization(line.substring(tabIdx + 1));
-					currentStep.add(new TokenSnapshot(id, text));
-				}
-			}
-		}
-		return steps;
-	}
-
-	private static String unescapeForVisualization(String s) {
-		if (s == null || s.isEmpty())
-			return "";
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < s.length(); i++) {
-			char c = s.charAt(i);
-			if (c == '\\' && i + 1 < s.length()) {
-				char next = s.charAt(i + 1);
-				switch (next) {
-					case '\\' -> sb.append('\\');
-					case 't' -> sb.append('\t');
-					case 'n' -> sb.append('\n');
-					case 'r' -> sb.append('\r');
-					default -> sb.append(next);
-				}
-				i++;
-			} else {
-				sb.append(c);
-			}
-		}
-		return sb.toString();
 	}
 
 	/**

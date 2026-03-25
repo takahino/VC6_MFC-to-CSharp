@@ -45,9 +45,7 @@ import java.util.Map;
  *            コメントマップ（トークンインデックス → コメント文字列リスト）
  * @param currentCode
  *            現在のコード文字列（テキスト系フェーズ＝COMBYで使用）
- * @param excelEnabled
- *            Excel 可視化出力の有効フラグ
  */
 public record PhaseExecutionContext(List<AstNode> tokenNodes, Map<Integer, List<String>> commentsBeforeToken,
-		String currentCode, boolean excelEnabled) {
+		String currentCode) {
 }

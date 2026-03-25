@@ -61,7 +61,7 @@ class DynamicRuleIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		converter = new CppToCSharpConverter(false);
+		converter = new CppToCSharpConverter();
 		ruleLoader = new ConversionRuleLoader(CppParserFactory.asLexerFactory());
 		dynamicLoader = new DynamicRuleLoader(CppParserFactory.asLexerFactory());
 	}

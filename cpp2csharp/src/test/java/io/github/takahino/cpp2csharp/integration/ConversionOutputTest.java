@@ -36,7 +36,6 @@ import io.github.takahino.cpp2csharp.converter.CppToCSharpConverter;
 import io.github.takahino.cpp2csharp.dynamic.DynamicRuleGenerator;
 import io.github.takahino.cpp2csharp.dynamic.DynamicRuleSpec;
 import io.github.takahino.cpp2csharp.output.ConversionOutputWriter;
-import io.github.takahino.cpp2csharp.output.ExcelOutputConfig;
 import io.github.takahino.cpp2csharp.rule.ConversionRule;
 import io.github.takahino.cpp2csharp.matcher.CppParserFactory;
 import io.github.takahino.cpp2csharp.rule.ConversionRuleLoader;
@@ -768,20 +767,17 @@ class ConversionOutputTest {
 	}
 
 	@Test
-	@DisplayName("Excel 無効時は .xlsx が出力されない")
+	@DisplayName(".xlsx は出力されない（Excel 出力機能削除済み）")
 	void outputWithoutExcel() throws IOException {
-		CppToCSharpConverter noExcelConverter = new CppToCSharpConverter(false);
-		ConversionOutputWriter noExcelWriter = new ConversionOutputWriter(ExcelOutputConfig.of(false));
-
 		String cpp = loadCppFile("test_math.cpp");
 		List<ConversionRule> rules = loadRuleFile("math_functions.rule");
-		ConversionResult result = noExcelConverter.convertSource(cpp, rules);
+		ConversionResult result = new CppToCSharpConverter().convertSource(cpp, rules);
 
 		Files.createDirectories(OUTPUT_DIR);
 		Path inputPath = OUTPUT_DIR.resolve("no_excel_test.cpp");
 		Path outputPath = OUTPUT_DIR.resolve("no_excel_test.cs");
 		Files.writeString(inputPath, cpp, StandardCharsets.UTF_8);
-		noExcelWriter.write(inputPath, outputPath, cpp, result);
+		new ConversionOutputWriter().write(inputPath, outputPath, cpp, result);
 
 		assertThat(outputPath).exists();
 		assertThat(OUTPUT_DIR.resolve("no_excel_test.xlsx")).doesNotExist();

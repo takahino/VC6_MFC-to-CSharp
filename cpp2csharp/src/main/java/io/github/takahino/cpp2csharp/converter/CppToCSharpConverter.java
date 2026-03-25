@@ -40,7 +40,6 @@ import io.github.takahino.cpp2csharp.matcher.CppParserFactory;
 import io.github.takahino.cpp2csharp.matcher.ReceiverAstValidator;
 import io.github.takahino.cpp2csharp.matcher.ReceiverValidator;
 import io.github.takahino.cpp2csharp.mrule.MultiReplaceRule;
-import io.github.takahino.cpp2csharp.output.ExcelOutputConfig;
 import io.github.takahino.cpp2csharp.retokenize.Retokenizer;
 import io.github.takahino.cpp2csharp.rule.CollectingErrorListener;
 import io.github.takahino.cpp2csharp.rule.ConversionRule;
@@ -94,33 +93,20 @@ public class CppToCSharpConverter {
 
 	private final ConversionRuleLoader ruleLoader;
 	private final Transformer transformer;
-	private final boolean excelEnabled;
 	private final CombyEngine combyEngine;
 	private final LanguageLexerFactory lexerFactory;
 	private final ReceiverValidator receiverValidator;
 
 	/**
-	 * コンストラクタ。デフォルト設定で初期化する。 Excel 可視化はシステムプロパティ {@code cpp2csharp.excel.enabled}
-	 * で制御（デフォルト true）。 マルチスレッド化時: 1 converter = 1 Transformer。並列時は converter
+	 * コンストラクタ。デフォルト設定で初期化する。 マルチスレッド化時: 1 converter = 1 Transformer。並列時は converter
 	 * をファイルごとに分離すること。
 	 */
 	public CppToCSharpConverter() {
-		this(ExcelOutputConfig.defaultConfig().isEnabled());
-	}
-
-	/**
-	 * コンストラクタ。Excel 可視化の有効/無効を指定可能。
-	 *
-	 * @param excelEnabled
-	 *            Excel 可視化出力を有効にする場合 true
-	 */
-	public CppToCSharpConverter(boolean excelEnabled) {
 		this.lexerFactory = CppParserFactory.asLexerFactory();
 		this.receiverValidator = ReceiverAstValidator.asValidator();
 		this.ruleLoader = new ConversionRuleLoader(lexerFactory);
 		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST, new RightmostFirstSelectionStrategy(),
 				receiverValidator);
-		this.excelEnabled = excelEnabled;
 		this.combyEngine = new CombyTransformer();
 	}
 
@@ -135,7 +121,6 @@ public class CppToCSharpConverter {
 		this.receiverValidator = ReceiverAstValidator.asValidator();
 		this.ruleLoader = new ConversionRuleLoader(lexerFactory);
 		this.transformer = Objects.requireNonNull(transformer, "transformer が null です");
-		this.excelEnabled = true;
 		this.combyEngine = new CombyTransformer();
 	}
 
@@ -151,7 +136,6 @@ public class CppToCSharpConverter {
 		this.ruleLoader = new ConversionRuleLoader(lexerFactory);
 		this.transformer = new Transformer(Transformer.DEFAULT_MAX_PASSES_CONST, new RightmostFirstSelectionStrategy(),
 				receiverValidator);
-		this.excelEnabled = ExcelOutputConfig.defaultConfig().isEnabled();
 		this.combyEngine = Objects.requireNonNull(combyEngine, "combyEngine が null です");
 	}
 
@@ -243,7 +227,7 @@ public class CppToCSharpConverter {
 		List<String> functionSignatures = new ArrayList<>();
 		collectFunctionInfo(parseTree, tokenStream, functionRanges, functionSignatures);
 		List<ConversionPhase> pipeline = buildPipeline(ruleSet, functionRanges);
-		PhaseExecutionContext ctx = new PhaseExecutionContext(tokenNodes, commentsBeforeToken, cppSource, excelEnabled);
+		PhaseExecutionContext ctx = new PhaseExecutionContext(tokenNodes, commentsBeforeToken, cppSource);
 
 		List<String> unitSourceDumps = List.of();
 		List<String> unitOutputDumps = List.of();
@@ -261,7 +245,7 @@ public class CppToCSharpConverter {
 			snapshots.addAll(result.snapshots());
 			phaseTransformLogs.addAll(result.logs());
 			ctx = new PhaseExecutionContext(result.tokenNodes() != null ? result.tokenNodes() : ctx.tokenNodes(),
-					result.commentsBeforeToken(), result.code(), excelEnabled);
+					result.commentsBeforeToken(), result.code());
 		}
 
 		String csCode = ctx.currentCode();
@@ -271,9 +255,8 @@ public class CppToCSharpConverter {
 		LOGGER.info("3パス変換完了 (エラー数: {})", transformer.getErrors().size());
 
 		return new ConversionResult(csCode, transformer.getErrors(), errorListener.getErrors(), initialTreeDump,
-				transformer.getAppliedTransforms(), transformer.getDiagnosticCandidates(),
-				transformer.getVisualizationTempFile(), phaseTransformLogs, snapshots, unitSourceDumps, unitOutputDumps,
-				functionUnitEntries);
+				transformer.getAppliedTransforms(), transformer.getDiagnosticCandidates(), phaseTransformLogs,
+				snapshots, unitSourceDumps, unitOutputDumps, functionUnitEntries);
 	}
 
 	/**
@@ -534,8 +517,7 @@ public class CppToCSharpConverter {
 		String initialTreeDump = new ParseTreeDumper().dump(parseTree, parser.getRuleNames(), tokenStream);
 
 		// Step 4: 変換実施（フェーズ順に適用、コメントマップを渡す）
-		String csCode = transformer.transformWithPhases(initialTokenNodes, rulesByPhase, commentsBeforeToken,
-				excelEnabled);
+		String csCode = transformer.transformWithPhases(initialTokenNodes, rulesByPhase, commentsBeforeToken);
 
 		LOGGER.info("変換完了 (エラー数: " + transformer.getErrors().size() + ")");
 
@@ -547,8 +529,7 @@ public class CppToCSharpConverter {
 		}
 
 		return new ConversionResult(csCode, transformer.getErrors(), errorListener.getErrors(), initialTreeDump,
-				transformer.getAppliedTransforms(), transformer.getDiagnosticCandidates(),
-				transformer.getVisualizationTempFile(), List.of(), snapshots);
+				transformer.getAppliedTransforms(), transformer.getDiagnosticCandidates(), List.of(), snapshots);
 	}
 
 	/**

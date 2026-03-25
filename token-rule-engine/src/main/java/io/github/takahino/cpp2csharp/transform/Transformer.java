@@ -46,12 +46,6 @@ import io.github.takahino.cpp2csharp.tree.AstNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -118,9 +112,6 @@ public class Transformer {
 	/** 診断候補（フィルタ無視再マッチで検出した要確認候補） */
 	private final List<DiagnosticCandidate> diagnosticCandidates = new ArrayList<>();
 
-	/** 変換過程可視化用一時ファイルのパス（Excel 無効時は null） */
-	private Path visualizationTempFile;
-
 	/** MAIN フェーズ各フェーズ完了時のコードスナップショット（phases.html 用） */
 	private final List<String> mainPhaseSnapshots = new ArrayList<>();
 
@@ -129,12 +120,6 @@ public class Transformer {
 	 * でリセットする。
 	 */
 	private int sequence = 0;
-
-	/**
-	 * 変換過程可視化用 Writer（複数ユニットの変換を 1 ファイルに追記するためインスタンス変数）。
-	 * {@link #prepareForNewConversion} で生成し、{@link #closeVizWriter} で閉じる。
-	 */
-	private java.io.Writer vizWriter = null;
 
 	/**
 	 * コンストラクタ。デフォルトの最大パス数（50,000）と RightmostFirstSelectionStrategy で初期化する。
@@ -207,7 +192,7 @@ public class Transformer {
 	 */
 	public String transform(List<AstNode> initialTokenNodes, List<ConversionRule> rules,
 			Map<Integer, List<String>> commentsBeforeToken) {
-		return transformWithPhases(initialTokenNodes, List.of(rules), commentsBeforeToken, true);
+		return transformWithPhases(initialTokenNodes, List.of(rules), commentsBeforeToken);
 	}
 
 	/**
@@ -228,26 +213,7 @@ public class Transformer {
 	 */
 	public String transformWithPhases(List<AstNode> initialTokenNodes, List<List<ConversionRule>> rulesByPhase,
 			Map<Integer, List<String>> commentsBeforeToken) {
-		return transformWithPhases(initialTokenNodes, rulesByPhase, commentsBeforeToken, true);
-	}
-
-	/**
-	 * トークンノード列全体にフェーズ別変換ルールを適用し、C# コードを生成する。
-	 *
-	 * @param initialTokenNodes
-	 *            初期トークンノード列
-	 * @param rulesByPhase
-	 *            フェーズごとのルールリスト（適用順）
-	 * @param commentsBeforeToken
-	 *            ストリームインデックス → そのトークン直前のコメントリスト
-	 * @param excelEnabled
-	 *            Excel 可視化出力を有効にする場合 true
-	 * @return 変換後の C# コード文字列
-	 */
-	public String transformWithPhases(List<AstNode> initialTokenNodes, List<List<ConversionRule>> rulesByPhase,
-			Map<Integer, List<String>> commentsBeforeToken, boolean excelEnabled) {
-		List<AstNode> nodes = transformWithPhasesReturnNodes(initialTokenNodes, rulesByPhase, commentsBeforeToken,
-				excelEnabled);
+		List<AstNode> nodes = transformWithPhasesReturnNodes(initialTokenNodes, rulesByPhase, commentsBeforeToken);
 		return buildOutput(nodes, commentsBeforeToken);
 	}
 
@@ -265,78 +231,30 @@ public class Transformer {
 	 *            フェーズごとのルールリスト（適用順）
 	 * @param commentsBeforeToken
 	 *            ストリームインデックス → そのトークン直前のコメントリスト
-	 * @param excelEnabled
-	 *            Excel 可視化出力を有効にする場合 true
 	 * @return 変換後のトークンノード列
 	 */
 	public List<AstNode> transformWithPhasesReturnNodes(List<AstNode> initialTokenNodes,
-			List<List<ConversionRule>> rulesByPhase, Map<Integer, List<String>> commentsBeforeToken,
-			boolean excelEnabled) {
-		prepareForNewConversion(excelEnabled);
-		writeInitialVizState(initialTokenNodes);
-		try {
-			List<AstNode> result = processUnitReturnNodes(initialTokenNodes, rulesByPhase, commentsBeforeToken);
-			runPostTransformScans(result, rulesByPhase);
-			return result;
-		} finally {
-			closeVizWriter();
-		}
+			List<List<ConversionRule>> rulesByPhase, Map<Integer, List<String>> commentsBeforeToken) {
+		prepareForNewConversion();
+		List<AstNode> result = processUnitReturnNodes(initialTokenNodes, rulesByPhase, commentsBeforeToken);
+		runPostTransformScans(result, rulesByPhase);
+		return result;
 	}
 
 	/**
 	 * 変換セッションを初期化する。
 	 *
 	 * <p>
-	 * ユニットごとの変換ループを始める前に 1 回だけ呼ぶこと。 複数ユニットを処理する場合は、このメソッドを 1 回呼んだ後に
-	 * {@link #writeInitialVizState} でファイル全体の初期状態を書き込み、
+	 * ユニットごとの変換ループを始める前に 1 回だけ呼ぶこと。複数ユニットを処理する場合は、このメソッドを 1 回呼んだ後に
 	 * {@link #processUnitReturnNodes} を各ユニットに対して呼ぶ。
 	 * </p>
-	 *
-	 * @param excelEnabled
-	 *            Excel 可視化出力を有効にする場合 true
 	 */
-	public void prepareForNewConversion(boolean excelEnabled) {
+	public void prepareForNewConversion() {
 		errors.clear();
 		appliedTransforms.clear();
 		diagnosticCandidates.clear();
 		mainPhaseSnapshots.clear();
 		sequence = 0;
-		closeVizWriter();
-		visualizationTempFile = null;
-
-		if (excelEnabled) {
-			try {
-				visualizationTempFile = Files.createTempFile("cpp2csharp_", ".dat");
-				vizWriter = new OutputStreamWriter(
-						new BufferedOutputStream(
-								Files.newOutputStream(visualizationTempFile, java.nio.file.StandardOpenOption.APPEND)),
-						StandardCharsets.UTF_8);
-			} catch (Exception e) {
-				LOGGER.warn("変換過程可視化用一時ファイルの作成に失敗しました: {}", e.getMessage());
-				visualizationTempFile = null;
-			}
-		}
-	}
-
-	/**
-	 * 変換開始前の全ファイル初期状態を可視化ファイルに書き込む（STEP 0）。
-	 *
-	 * <p>
-	 * {@link #prepareForNewConversion} 後、最初の {@link #processUnitReturnNodes} 呼び出し前に
-	 * 1 回だけ呼ぶこと。ユニット分割時はファイル全体のトークン列を渡すことで、 Excel の初期列が全体を正しく反映する。
-	 * </p>
-	 *
-	 * @param initialTokenNodes
-	 *            ファイル全体の初期トークン列（PRE フェーズ後）
-	 */
-	public void writeInitialVizState(List<AstNode> initialTokenNodes) {
-		if (vizWriter != null && !initialTokenNodes.isEmpty()) {
-			try {
-				writeVisualizationStep(vizWriter, sequence, initialTokenNodes);
-			} catch (Exception e) {
-				LOGGER.warn("変換過程の書き込みに失敗しました: {}", e.getMessage());
-			}
-		}
 	}
 
 	/**
@@ -418,13 +336,6 @@ public class Transformer {
 						decision.reasonSummary(), decision.selectionDetails(), startIdx, endIdx, mergedIdsList));
 
 				tokenNodes = splice(tokenNodes, best);
-				if (vizWriter != null) {
-					try {
-						writeVisualizationStep(vizWriter, sequence, tokenNodes);
-					} catch (Exception e) {
-						LOGGER.warn("変換過程の書き込みに失敗しました: {}", e.getMessage());
-					}
-				}
 
 				LOGGER.info(String.format("変換適用 [フェーズ%d][%s]: [%s] → [%s]", phaseIndex + 1, strategyLabel, matchedNode,
 						best.getRule().getToTemplate()));
@@ -470,60 +381,12 @@ public class Transformer {
 	}
 
 	/**
-	 * 可視化 Writer を閉じる。 {@link #prepareForNewConversion} と対になる。MainPhase の
-	 * try-finally で呼ぶこと。
-	 */
-	public void closeVizWriter() {
-		if (vizWriter != null) {
-			try {
-				vizWriter.close();
-			} catch (Exception e) {
-				LOGGER.warn("変換過程可視化用ファイルのクローズに失敗しました: {}", e.getMessage());
-			}
-			vizWriter = null;
-		}
-	}
-
-	/**
-	 * 変換過程可視化用一時ファイルのパスを返す。
-	 *
-	 * @return 一時ファイルのパス。Excel 無効時は null
-	 */
-	public Path getVisualizationTempFile() {
-		return visualizationTempFile;
-	}
-
-	/**
 	 * MAIN フェーズ各フェーズ完了時のコードスナップショットを返す（phases.html 用）。
 	 *
 	 * @return フェーズ番号順のコードスナップショットリスト
 	 */
 	public List<String> getMainPhaseSnapshots() {
 		return List.copyOf(mainPhaseSnapshots);
-	}
-
-	/**
-	 * 1 ステップ分のトークン列を可視化用ファイルに追記する。 フォーマット: ---STEP N--- の後に 1行1トークンで
-	 * id\ttext（改行・タブはエスケープ）
-	 */
-	private void writeVisualizationStep(Writer writer, int stepIndex, List<AstNode> tokenNodes)
-			throws java.io.IOException {
-		writer.write("---STEP ");
-		writer.write(String.valueOf(stepIndex));
-		writer.write("---\n");
-		for (AstNode node : tokenNodes) {
-			writer.write(String.valueOf(node.getId()));
-			writer.write("\t");
-			writer.write(escapeForVisualization(node.getText()));
-			writer.write("\n");
-		}
-		writer.flush();
-	}
-
-	private static String escapeForVisualization(String text) {
-		if (text == null)
-			return "";
-		return text.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r");
 	}
 
 	/**

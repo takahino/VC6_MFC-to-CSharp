@@ -38,7 +38,6 @@ import io.github.takahino.cpp2csharp.discovery.PatternDiscoveryOutputWriter;
 import io.github.takahino.cpp2csharp.discovery.PatternDiscoveryResult;
 import io.github.takahino.cpp2csharp.matcher.CppParserFactory;
 import io.github.takahino.cpp2csharp.output.ConversionOutputWriter;
-import io.github.takahino.cpp2csharp.output.ExcelOutputConfig;
 import io.github.takahino.cpp2csharp.rule.ConversionRule;
 import io.github.takahino.cpp2csharp.rule.ConversionRuleLoader;
 import io.github.takahino.cpp2csharp.rule.ConversionRuleLoader.ThreePassRuleSet;
@@ -60,11 +59,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <h2>使用方法</h2>
  *
  * <pre>
- * java -jar cpp-to-csharp.jar [--no-excel] &lt;入力C++ファイル&gt; [ルールディレクトリ]
+ * java -jar cpp-to-csharp.jar &lt;入力C++ファイル&gt; [ルールディレクトリ]
  * </pre>
  *
  * <ul>
- * <li>{@code --no-excel}: Excel 変換過程可視化 (.xlsx) を出力しない</li>
  * <li>入力ファイル: 変換対象の C++ ソースファイルパス</li>
  * <li>ルールディレクトリ (省略可): ルールファイルのディレクトリ。省略時はクラスパス上の rules/ を使用</li>
  * </ul>
@@ -84,20 +82,15 @@ public class Main {
 		LOG.info("=== cpp2csharp 起動 ===");
 
 		if (args.length < 1) {
-			LOG.error("使用方法: cpp-to-csharp [--no-excel] <入力C++ファイル> [ルールディレクトリ]");
+			LOG.error("使用方法: cpp-to-csharp <入力C++ファイル> [ルールディレクトリ]");
 			System.exit(1);
 		}
 
 		List<String> argList = new ArrayList<>(List.of(args));
-		boolean excelEnabled = true;
-		if (argList.contains("--no-excel")) {
-			argList.remove("--no-excel");
-			excelEnabled = false;
-		}
 		boolean discoverMode = argList.remove("--discover");
 
 		if (argList.isEmpty()) {
-			LOG.error("使用方法: cpp-to-csharp [--no-excel] <入力C++ファイル> [ルールディレクトリ]");
+			LOG.error("使用方法: cpp-to-csharp <入力C++ファイル> [ルールディレクトリ]");
 			System.exit(1);
 		}
 
@@ -123,7 +116,7 @@ public class Main {
 		int totalRules = ruleSet.mainPhases().stream().mapToInt(List::size).sum();
 		if (totalRules == 0) {
 			System.err.println("ルールが見つかりません。引数にルールディレクトリを指定してください。");
-			System.err.println("  java -jar cpp2csharp.jar [--no-excel] <ファイル or ディレクトリ> <ルールディレクトリ>");
+			System.err.println("  java -jar cpp2csharp.jar <ファイル or ディレクトリ> <ルールディレクトリ>");
 		}
 		LOG.info("ルールロード完了 (+{}ms): main={} フェーズ, pre={} フェーズ, post={} フェーズ, comby={} フェーズ, dynamic={} スペック",
 				System.currentTimeMillis() - startMs, ruleSet.mainPhases().size(), ruleSet.prePhases().size(),
@@ -138,23 +131,23 @@ public class Main {
 			PatternDiscoveryEngine engine = new PatternDiscoveryEngine();
 			PatternDiscoveryResult discoverResult = engine.discover(inputFile, ruleSet);
 			PatternDiscoveryOutputWriter discoverWriter = new PatternDiscoveryOutputWriter();
-			discoverWriter.write(inputFile, discoverResult, excelEnabled);
+			discoverWriter.write(inputFile, discoverResult);
 			LOG.info("パターン発見完了: パターン数={}, ファイル数={}", discoverResult.allPatterns().size(), discoverResult.totalFiles());
 			return;
 		}
 
-		ConversionOutputWriter writer = new ConversionOutputWriter(ExcelOutputConfig.of(excelEnabled));
+		ConversionOutputWriter writer = new ConversionOutputWriter();
 		// レポート出力用にメインルールをフラット化
 		List<ConversionRule> allMainRules = ruleSet.mainPhases().stream().flatMap(List::stream).toList();
 
 		if (Files.isDirectory(inputFile)) {
 			// D1: ディレクトリバッチ変換
-			convertDirectory(inputFile, ruleSet, allMainRules, writer, excelEnabled);
+			convertDirectory(inputFile, ruleSet, allMainRules, writer);
 		} else {
 			// 単一ファイル変換
 			// マルチスレッド化時: ファイルごとに new すること。同一 converter の共有は Transformer の errors
 			// 等が混在するため禁止。
-			CppToCSharpConverter converter = new CppToCSharpConverter(excelEnabled);
+			CppToCSharpConverter converter = new CppToCSharpConverter();
 
 			String cppSource = Files.readString(inputFile, StandardCharsets.UTF_8);
 			LOG.info("処理開始 (+{}ms): ファイル={} ({}行, {}bytes)", System.currentTimeMillis() - startMs,
@@ -177,10 +170,7 @@ public class Main {
 			Path outputCs = inputFile
 					.resolveSibling(inputFile.getFileName().toString().replaceFirst("\\.(cpp|i)$", ".cs"));
 			writer.write(inputFile, outputCs, cppSource, result, allMainRules); // A2: main rules を渡す
-			String outputFiles = excelEnabled
-					? ".report.txt, .report.html, .treedump.txt, .xlsx"
-					: ".report.txt, .report.html, .treedump.txt";
-			LOG.info("出力: {}, {}", outputCs, outputFiles);
+			LOG.info("出力: {}, .report.txt, .report.html, .treedump.txt", outputCs);
 
 			LOG.info("---");
 			LOG.info("処理完了: ファイル={} (パースエラー: {}, 変換エラー: {})", inputFile.toAbsolutePath().normalize(),
@@ -204,13 +194,11 @@ public class Main {
 	 *            変換ルールリスト（読み取り専用、スレッド間共有可能）
 	 * @param writer
 	 *            出力ライター
-	 * @param excelEnabled
-	 *            Excel 出力の有効/無効
 	 * @throws IOException
 	 *             ファイル走査に失敗した場合
 	 */
 	private static void convertDirectory(Path inputDir, ThreePassRuleSet ruleSet, List<ConversionRule> allMainRules,
-			ConversionOutputWriter writer, boolean excelEnabled) throws IOException {
+			ConversionOutputWriter writer) throws IOException {
 		List<Path> cppFiles;
 		try (var stream = Files.walk(inputDir)) {
 			cppFiles = stream.filter(Files::isRegularFile).filter(p -> p.toString().matches(".*\\.(cpp|c|h|i)$"))
@@ -232,7 +220,7 @@ public class Main {
 		// ファイルごとに new CppToCSharpConverter() — Transformer はスレッドセーフでないため必須
 		List<FileResult> fileResults = cppFiles.parallelStream().map(cppFile -> {
 			try {
-				CppToCSharpConverter converter = new CppToCSharpConverter(excelEnabled);
+				CppToCSharpConverter converter = new CppToCSharpConverter();
 				String cppSource = Files.readString(cppFile, StandardCharsets.UTF_8);
 				ConversionResult result = converter.convertSourceThreePass(cppSource, ruleSet);
 				Path outputCs = cppFile
